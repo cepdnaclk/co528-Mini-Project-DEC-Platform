@@ -1,0 +1,193 @@
+Department of Computer Engineering
+
+University of Peradeniya
+CO528Applied Software Architecture
+
+Mini Project: Department Engagement & Career Platform (DECP)
+
+(15 Marks)
+
+1.1 Objective:
+
+Build a real world inspired department engagement platform for current and past students 
+(alumni) of your department. The platform should allow students to connect, share posts, 
+apply for jobs/internships, collaborate on research, and participate in events, with web and 
+mobile clients.
+
+The focus is on architectural design, modularity, and integration, not full feature 
+completeness.
+
+Focus on:
+
+•
+Architecture design
+
+•
+Modular services
+
+•
+Integration
+
+•
+Cloud deployment
+
+•
+Web + mobile clients
+
+•
+Quality attribute justification
+
+Instructions:
+
+➢Form a group of 4–5 members
+➢Assign the following roles to your group members: Assigned Roles
+•
+Enterprise Architect
+•
+Solution Architect
+•
+Application Architect
+•
+Security Architect
+•
+DevOps Architect
+
+
+➢Project Demonstration:
+
+•
+One member from the group will present and demonstrate the project.
+
+•
+Maximum demonstration time: 3 minutes.
+
+•
+Demonstration is scheduled after 4 weeks from the project start.
+
+➢Documentation Requirements (per group):
+
+•
+Architecture Diagrams: SOA, enterprise, product modularity, deployment.
+
+•
+Implementation Details: Features implemented, client integration, and module 
+communication.
+
+•
+Cloud Deployment Details: Backend/database setup, scalability considerations.
+
+•
+Research Findings: Summary of analysis on similar platforms (e.g., Facebook, 
+LinkedIn), missing features, and improvements proposed.
+
+•
+Justifications: Explain design decisions, modularity choices, and quality attribute 
+considerations.
+
+•
+Additional: Screenshots, demo links, README, GitHub repository with code.
+
+1.2 Project Requirements
+
+1. User Management
+
+o
+Register/login, edit profile, roles (student, alumni, admin)
+
+o
+Authentication & authorization for web/mobile
+
+2. Feed & Media Posts
+
+o
+Post text updates; upload images/videos
+
+o
+Like/comment/share functionality.
+
+3. Jobs & Internships
+
+o
+Post jobs/internships
+
+o
+Apply for opportunities via web/mobile clients
+
+
+4. Events & Announcements
+
+o
+Department events, workshops, RSVP system
+
+o
+Notifications
+
+5. Research Collaboration – Create projects, share documents, invite collaborators.
+6. Messaging – Direct messaging between users or group chat.
+7. Advanced Notifications – Event driven, push notifications.
+8. Analytics Dashboard – Show active users, popular posts, job applications
+
+You are required to research real world platforms such as Facebook, LinkedIn, and similar social 
+networks to understand the architecture they use. Based on this research, each group should 
+identify any missing features or areas for improvement and present these findings along with 
+their proposed design decisions in their project documentation and presentation.
+
+1.3 Architecture Requirements
+
+Students must demonstrate all relevant software architecture concepts:
+
+o
+SOA -Each module is a separate service with well defined APIs.
+o
+Web Oriented Architecture - Web client consumes backend APIs.
+o
+Mobile Architecture - Mobile client consumes same backend APIs.
+o
+Cloud Architecture - Backend + database deployed in cloud (AWS/GCP/Azure). 
+o
+Enterprise Architecture- High level diagram showing module integration, user roles, 
+and departmental workflow.
+o
+Product Architecture - Modular design: core modules + optional features, reusable 
+components, maintainability plan.
+
+1.4 Deliverables (ext. Documentation)
+
+1. Architecture Diagrams
+
+o
+SOA diagrams (service interactions, API endpoints)
+o
+Enterprise architecture (roles, modules, integration)
+o
+Product modularity diagram (core + optional features)
+o
+Deployment diagram (cloud, database, media storage)
+2. Functional Web & Mobile Clients
+
+o
+working features for core modules.
+o
+Optional bonus features implemented if possible.
+3. Cloud Deployment
+
+o
+Backend and database live on cloud
+
+
+1.5 Evaluation criteria
+
+•
+Architecture Design :correctness and clarity of SOA, enterprise, and product modular 
+diagrams, including cloud deployment.
+•
+Implementation and Functionality :whether core services work, web and mobile clients 
+are integrated, and modules communicate properly.
+•
+Cloud Deployment and Scalability :will check for a live backend and database on the 
+cloud, with consideration for scalability.
+•
+Documentation and Presentation : whether it covers clear explanations, deployment 
+steps, and a professional demo.
+
+
