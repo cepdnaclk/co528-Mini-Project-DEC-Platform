@@ -20,7 +20,8 @@ exports.createPost = async (req, res) => {
     let authorName = 'Unknown User';
     let authorAvatar = '';
     try {
-      const response = await internalClient.get('http://localhost:3002/api/v1/users/' + authorId);
+      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:3002';
+      const response = await internalClient.get(`${userServiceUrl}/api/v1/users/${authorId}`);
       if (response.data && response.data.data) {
         authorName = response.data.data.name;
         authorAvatar = response.data.data.avatarUrl;
@@ -85,9 +86,18 @@ exports.likePost = async (req, res) => {
       post.likes.push(userId);
       post.likeCount += 1;
       await post.save();
+
+      // Emit event so the notification service can notify the post author
+      await publish('decp.post.liked', {
+        type: 'decp.post.liked',
+        postId: post._id,
+        authorId: post.authorId,
+        likerId: userId,
+      });
     }
     res.json({ success: true, data: post });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };
@@ -122,7 +132,8 @@ exports.addComment = async (req, res) => {
     let authorName = 'Unknown User';
     let authorAvatar = '';
     try {
-      const resp = await internalClient.get('http://localhost:3002/api/v1/users/' + authorId);
+      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:3002';
+      const resp = await internalClient.get(`${userServiceUrl}/api/v1/users/${authorId}`);
       if (resp.data?.data) {
         authorName = resp.data.data.name;
         authorAvatar = resp.data.data.avatarUrl;
