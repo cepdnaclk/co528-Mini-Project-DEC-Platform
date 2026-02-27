@@ -260,21 +260,18 @@ Total infrastructure cost: $0 per month on free tiers."
 
 ## Core vs Optional Feature Classification
 
-### Core (must work for demo)
-1. Register / Login / Profile edit
-2. Feed: create post, view feed, like
-3. Jobs: post job, apply for job
-4. Events: create event, RSVP
-5. Basic notifications (in-app)
-
-### Secondary (demonstrate if time permits)
-6. Research collaboration (projects + documents)
-7. Direct messaging (WebSocket chat)
-8. Push notifications (FCM)
-9. Analytics dashboard
+### Core (must work for demo and mapped to brief requirements)
+1. User management: register/login/profile edit + role-based access
+2. Feed & media posts: create/view posts + image/video upload + like/comment/share
+3. Jobs & internships: post and apply
+4. Events & announcements: create/list + RSVP
+5. Research collaboration: projects + document sharing + collaborator invites
+6. Messaging: direct messages (group chat optional extension)
+7. Advanced notifications: event-driven in-app + push notifications
+8. Analytics dashboard: active users, popular posts, job applications
 
 ### Optional / Bonus
-10. Group chat
-11. Feed comments + shares
-12. Job CV upload
-13. Research collaborator invitations
+9. Group chat with presence indicators
+10. Feed bookmarks/saved posts
+11. CV parsing and skill extraction
+12. AI-assisted job matching

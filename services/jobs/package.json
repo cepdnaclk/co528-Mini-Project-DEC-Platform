@@ -1,0 +1,1 @@
+{"name":"jobs","dependencies":{"dotenv":"^17.3.1","express":"^5.2.1","express-async-handler":"^1.2.0","mongoose":"^9.2.3","zod":"^4.3.6"}}

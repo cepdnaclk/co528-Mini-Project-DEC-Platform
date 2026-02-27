@@ -49,8 +49,10 @@
 gateway → auth → users → feed → jobs → events → research → messaging → notifications → analytics
 ```
 
-All services deployed on GCP Cloud Run. Only the gateway has public internet access.
-All other services are internal-only and reachable only via the gateway.
+All services are deployed on GCP Cloud Run.
+`decp-gateway` is the only client-facing public entry point.
+`decp-auth`, `decp-users`, `decp-feed`, `decp-jobs`, `decp-events`, `decp-research`, and `decp-messaging` use internal ingress.
+`decp-notifications` and `decp-analytics` expose public ingress only to receive Pub/Sub push delivery, and protect application routes using `X-Internal-Token`.
 
 ---
 

@@ -37,7 +37,7 @@ The SOA pattern itself is a scalability enabler — monolithic services cannot b
 - **Stateless JWT** authentication: 15-minute access tokens + 7-day refresh tokens with rotation
 - **RBAC** enforced at service level using the role claim injected by the gateway
 - **Bcrypt (12 rounds)** for password hashing
-- **Network isolation**: only the gateway has public ingress; all other services are internal-only
+- **Network isolation**: core services use internal ingress; notification/analytics expose only Pub/Sub push endpoints and protect app routes with `X-Internal-Token`
 - **Pre-signed R2 URLs** for file uploads: files never pass through application servers
 - **Rate limiting** at gateway: 200 req/15min global, 10 req/15min on auth endpoints
 - **GCP Secret Manager** for all secrets: no secrets in code or Docker images

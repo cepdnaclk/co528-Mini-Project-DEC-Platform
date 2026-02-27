@@ -45,9 +45,8 @@ Issues and validates JWTs. Owns credentials. No business logic beyond auth.
 |--------|------------------------|---------------|--------------------------------------|
 | POST   | /api/v1/auth/register  | No            | Create new account                   |
 | POST   | /api/v1/auth/login     | No            | Validate credentials, return tokens  |
-| POST   | /api/v1/auth/refresh   | No            | Exchange refresh token for new access token |
+| POST   | /api/v1/auth/refresh   | No            | Exchange refresh token for new access token (web: cookie, mobile: token in body) |
 | POST   | /api/v1/auth/logout    | Yes           | Invalidate refresh token             |
-| GET    | /api/v1/auth/verify    | Internal only | Validate token (called by gateway)   |
 | GET    | /api/v1/auth/health    | No            | Health check                         |
 
 ### Request / Response Examples
@@ -61,8 +60,11 @@ Response: { "success": true, "data": { "userId": "...", "message": "Registered. 
 **POST /api/v1/auth/login**
 ```json
 Request:  { "email": "...", "password": "..." }
-Response: { "success": true, "data": { "accessToken": "eyJ...", "refreshToken": "...", "user": { "id": "...", "role": "student" } } }
+Response: { "success": true, "data": { "accessToken": "eyJ...", "user": { "id": "...", "role": "student" } } }
 ```
+`refreshToken` handling:
+- Web: set via `Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Lax; Domain=.decp.app`
+- Mobile: returned in response body as `data.refreshToken` and stored in secure storage
 
 ### MongoDB Schema (`decp_auth`)
 ```js
@@ -80,13 +82,20 @@ Response: { "success": true, "data": { "accessToken": "eyJ...", "refreshToken": 
 ```
 
 ### Dependencies
-- None (lowest-level service, no upstream calls)
+- GCP Pub/Sub (publishes `decp.user.registered` event)
+
+### Pub/Sub Events Published
+| Topic                  | Payload                              | Trigger         |
+|------------------------|--------------------------------------|-----------------|
+| `decp.user.registered` | `{ userId, role, registeredAt }`     | New user created|
 
 ### Extra Environment Variables
 ```
 BCRYPT_ROUNDS=12
 JWT_ACCESS_EXPIRES=15m
 JWT_REFRESH_EXPIRES=7d
+PUBSUB_TOPIC_USER_REGISTERED=decp.user.registered
+GOOGLE_CLOUD_PROJECT_ID=
 ```
 
 ### Admin Bootstrap (Required Before Demo)
@@ -95,41 +104,70 @@ The registration endpoint correctly blocks self-registration as `admin` (by desi
 
 **Seed script:** `scripts/seed-admin.js`
 ```js
-// Run once after first deploy: node scripts/seed-admin.js
-const mongoose = require('mongoose');
+// Run once after first deploy:
+// AUTH_MONGODB_URI=... USER_MONGODB_URI=... ADMIN_EMAIL=... ADMIN_PASSWORD=... node scripts/seed-admin.js
+const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
 
 async function seedAdmin() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  const authClient = new MongoClient(process.env.AUTH_MONGODB_URI);
+  const userClient = new MongoClient(process.env.USER_MONGODB_URI);
+  await authClient.connect();
+  await userClient.connect();
 
-  const db = mongoose.connection.db;
-  const email = 'admin@eng.pdn.ac.lk';
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required');
 
-  const existing = await db.collection('users').findOne({ email });
-  if (existing) { console.log('Admin already exists'); process.exit(0); }
+  const authDb = authClient.db();
+  const userDb = userClient.db();
+  const existing = await authDb.collection('users').findOne({ email });
+  if (existing) return console.log('Admin already exists');
 
-  const passwordHash = await bcrypt.hash('Admin@DECP2025', 12);
-  await db.collection('users').insertOne({
+  const userId = new ObjectId();
+  const passwordHash = await bcrypt.hash(password, 12);
+  const now = new Date();
+
+  await authDb.collection('users').insertOne({
+    _id: userId,
     email,
     passwordHash,
     role: 'admin',
     refreshTokens: [],
     isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
   });
 
-  // Also seed user-service profile for the admin
-  await mongoose.disconnect();
-  console.log('Admin user created: admin@eng.pdn.ac.lk / Admin@DECP2025');
+  await userDb.collection('profiles').insertOne({
+    userId: userId.toString(),
+    email,
+    name: 'DECP Admin',
+    role: 'admin',
+    bio: '',
+    skills: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await authClient.close();
+  await userClient.close();
+  console.log(`Admin user created: ${email}`);
 }
 
-seedAdmin().catch(console.error);
+seedAdmin().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
 ```
 
 Run after first Cloud Run deployment:
 ```bash
-MONGODB_URI=<decp_auth_connection_string> node scripts/seed-admin.js
+AUTH_MONGODB_URI=<decp_auth_connection_string> \
+USER_MONGODB_URI=<decp_users_connection_string> \
+ADMIN_EMAIL=admin@eng.pdn.ac.lk \
+ADMIN_PASSWORD='<strong-password>' \
+node scripts/seed-admin.js
 ```
 
 > After seeding, the admin can log in at `/api/v1/auth/login` and use the admin token to promote other users via `PUT /api/v1/users/:id/role`.
@@ -151,6 +189,9 @@ Owns user profile data (name, bio, photo, skills, graduation year). Role managem
 | PUT    | /api/v1/users/:id/role        | Yes     | Admin      | Change user role         |
 | POST   | /api/v1/users/me/avatar       | Yes     | Any        | Get R2 pre-signed URL for avatar upload |
 | GET    | /api/v1/users/health          | No      | -          | Health check             |
+
+### Route Ordering Note
+In Express, define `GET /api/v1/users/me` **before** `GET /api/v1/users/:id`, otherwise `me` will be treated as a user ID value.
 
 ### MongoDB Schema (`decp_users`)
 ```js
@@ -208,6 +249,9 @@ Manages posts, comments, likes, shares. Generates pre-signed R2 URLs for media u
 | POST   | /api/v1/feed/media/upload-url         | Yes  | Any        | Get R2 pre-signed URL for media    |
 | GET    | /api/v1/feed/posts/popular            | Internal | -     | Top N posts by likes (called by analytics-service only, validated by X-Internal-Token) |
 | GET    | /api/v1/feed/health                   | No   | -          | Health check                       |
+
+### Route Ordering Note
+In Express, define `GET /api/v1/feed/posts/popular` **before** `GET /api/v1/feed/posts/:id`, otherwise Express will interpret `popular` as a post ID value.
 
 ### Pagination Convention
 `GET /api/v1/feed/posts?cursor=<last_post_id>&limit=20`
@@ -311,6 +355,13 @@ Job/internship listings posted by alumni or admin. Application submission by stu
 | `decp.job.posted`  | `{ jobId, title, company, postedBy }`      | New job saved  |
 | `decp.job.applied` | `{ jobId, applicantId, posterId }`         | Application submitted |
 
+### Extra Environment Variables
+```
+GOOGLE_CLOUD_PROJECT_ID=
+PUBSUB_TOPIC_JOB_POSTED=decp.job.posted
+PUBSUB_TOPIC_JOB_APPLIED=decp.job.applied
+```
+
 ---
 
 ## Service 5: events-service
@@ -364,6 +415,13 @@ Department events, workshops, announcements. RSVP tracking. Publishes events to 
 |-----------------------|-------------------------------------------------|-----------------|
 | `decp.event.created`  | `{ eventId, title, eventDate, createdBy }`      | Event created   |
 | `decp.event.rsvp`     | `{ eventId, userId, title }`                    | RSVP confirmed  |
+
+### Extra Environment Variables
+```
+GOOGLE_CLOUD_PROJECT_ID=
+PUBSUB_TOPIC_EVENT_CREATED=decp.event.created
+PUBSUB_TOPIC_EVENT_RSVP=decp.event.rsvp
+```
 
 ---
 
@@ -482,16 +540,19 @@ Stores in-app notifications. Subscribes to all Pub/Sub topics and dispatches pus
 | PUT    | /api/v1/notifications/read-all         | Yes  | Mark all as read                        |
 | POST   | /api/v1/notifications/device-token     | Yes  | Register FCM token for push             |
 | DELETE | /api/v1/notifications/device-token     | Yes  | Remove FCM token (logout)               |
+| POST   | /pubsub/push                           | No JWT | Pub/Sub push endpoint (requires verification token) |
 | GET    | /api/v1/notifications/health           | No   | Health check                            |
 
 ### Pub/Sub Subscriptions
 | Topic                 | Action on Receive                                              |
 |-----------------------|----------------------------------------------------------------|
-| `decp.post.created`   | Create notification for followers; send push via FCM          |
-| `decp.job.posted`     | Notify all students                                           |
-| `decp.job.applied`    | Notify poster that someone applied                            |
-| `decp.event.created`  | Notify all users                                              |
-| `decp.event.rsvp`     | Confirm RSVP to attendee                                      |
+| `decp.post.created`   | Create in-app notification for post author's followers; send push via FCM |
+| `decp.job.posted`     | Send push notification to all users who have registered an FCM token (broadcast via FCM topic or iterate device_tokens collection) |
+| `decp.job.applied`    | Create in-app notification + push for the job poster          |
+| `decp.event.created`  | Send push notification to all registered FCM tokens (broadcast) |
+| `decp.event.rsvp`     | Create in-app notification confirming RSVP to the attendee    |
+
+> **Prototype note for "notify all students/users" broadcasts:** For the demo, iterate the `device_tokens` collection in batches and send FCM multicast messages (`admin.messaging().sendEachForMulticast()`). In production this would use FCM topics (users subscribe at app startup) to avoid iterating all tokens.
 
 ### MongoDB Schema (`decp_notifications`)
 ```js
@@ -521,7 +582,7 @@ Stores in-app notifications. Subscribes to all Pub/Sub topics and dispatches pus
 ```
 FIREBASE_SERVICE_ACCOUNT_JSON=<base64-encoded service account JSON from Firebase Console>
 GOOGLE_CLOUD_PROJECT_ID=
-PUBSUB_SUBSCRIPTION_NOTIFICATIONS=decp-notification-sub
+PUBSUB_VERIFICATION_TOKEN=<shared_random_string_for_pubsub_push_validation>
 ```
 
 > **Important:** Do NOT use the legacy FCM server key (`FCM_SERVER_KEY`). Google shut down the
@@ -562,6 +623,7 @@ Aggregates metrics for the admin dashboard. Subscribes to Pub/Sub events and mai
 | GET    | /api/v1/analytics/popular-posts   | Yes  | Admin | Top N posts by likes               |
 | GET    | /api/v1/analytics/job-applications| Yes  | Admin | Job application counts             |
 | GET    | /api/v1/analytics/events          | Yes  | Admin | Event attendance stats             |
+| POST   | /pubsub/push                      | No JWT | -   | Pub/Sub push endpoint (requires verification token) |
 | GET    | /api/v1/analytics/health          | No   | -     | Health check                       |
 
 ### Analytics Overview Response
@@ -601,6 +663,7 @@ Aggregates metrics for the admin dashboard. Subscribes to Pub/Sub events and mai
 | `decp.job.applied`    | Increment applicationsSubmitted |
 | `decp.event.created`  | Increment eventsCreated counter |
 | `decp.event.rsvp`     | Increment rsvpsCount            |
+| `decp.user.registered`| Increment newUsers counter      |
 
 ---
 
@@ -610,7 +673,8 @@ When services call each other directly (e.g., analytics fetching popular posts f
 ```
 X-Internal-Token: <INTERNAL_SERVICE_SECRET>
 ```
-Each service validates this header and bypasses JWT auth for internal calls.
+Gateway adds this header to proxied protected routes, and services must reject external requests missing this token.
+Exemptions: auth public routes (`/api/v1/auth/register|login|refresh`), `GET /health`, and `/pubsub/push`.
 
 ```
 INTERNAL_SERVICE_SECRET=<shared_secret_between_services>

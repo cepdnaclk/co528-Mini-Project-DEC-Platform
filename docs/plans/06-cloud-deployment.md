@@ -18,16 +18,20 @@
   ┌─────────────────────┐              │  │  (public endpoint)  │  │
   │  Flutter Mobile App │              │  └──────────┬──────────┘  │
   │  (APK / Play Store) │              │             │             │
-  └─────────────────────┘              │  Internal services (private):
+  └─────────────────────┘              │  Internal (ingress=internal):
                                        │  ┌──────┐ ┌──────┐ ┌──────┐
                                        │  │ auth │ │users │ │ feed │
                                        │  └──────┘ └──────┘ └──────┘
                                        │  ┌──────┐ ┌──────┐ ┌──────┐
                                        │  │ jobs │ │evnts │ │resrch│
                                        │  └──────┘ └──────┘ └──────┘
-                                       │  ┌──────┐ ┌──────┐ ┌──────┐
-                                       │  │ msgs │ │notif │ │anlyt │
-                                       │  └──────┘ └──────┘ └──────┘
+                                       │  ┌──────┐
+                                       │  │ msgs │
+                                       │  └──────┘
+                                       │  Public (ingress=all, token-protected):
+                                       │  ┌──────┐ ┌──────┐
+                                       │  │notif │ │anlyt │
+                                       │  └──────┘ └──────┘
                                        └───────────────────────────────┘
                                                     │
                   ┌─────────────────────────────────┼──────────────────┐
@@ -59,15 +63,15 @@
 | `decp-events`         | Internal    | 0             | 5             | 256Mi  | 1    |
 | `decp-research`       | Internal    | 0             | 5             | 256Mi  | 1    |
 | `decp-messaging`      | Internal    | 1             | 5             | 512Mi  | 1    |
-| `decp-notifications`  | Internal    | 0             | 5             | 256Mi  | 1    |
-| `decp-analytics`      | Internal    | 0             | 3             | 256Mi  | 1    |
+| `decp-notifications`  | Public      | 0             | 5             | 256Mi  | 1    |
+| `decp-analytics`      | Public      | 0             | 3             | 256Mi  | 1    |
 
 **Key settings:**
 - `Min Instances = 0` → scale-to-zero when no traffic (free tier maximised)
 - `Min Instances = 1` → messaging-service only: keeps one warm instance so existing WebSocket connections are not dropped mid-demo
-- `Ingress = Internal` → internal services cannot be called from the internet, only from within GCP
-- `Ingress = Public` → only the gateway is accessible from the internet
-- `--allow-unauthenticated` → only on gateway (other services use IAM)
+- `Ingress = Internal` → core services are not internet reachable
+- `Ingress = Public` → gateway, notification-service, analytics-service (required for Pub/Sub push delivery)
+- `--allow-unauthenticated` is used with token-based service protection (`X-Internal-Token` for app routes, `PUBSUB_VERIFICATION_TOKEN` for push routes)
 
 ### Cloud Run YAML Example (`infra/cloud-run/gateway.yaml`)
 ```yaml
@@ -120,6 +124,7 @@ echo -n "<jwt_secret>" | gcloud secrets create jwt-secret --data-file=-
 echo -n "<mongodb_uri>" | gcloud secrets create mongodb-uri-auth --data-file=-
 echo -n "<cf_r2_access_key>" | gcloud secrets create cf-r2-access-key --data-file=-
 echo -n "<internal_token>" | gcloud secrets create internal-service-secret --data-file=-
+echo -n "<pubsub_verification_token>" | gcloud secrets create pubsub-verification-token --data-file=-
 ```
 
 ### Step 2: Create Pub/Sub Topics and Subscriptions
@@ -129,14 +134,21 @@ for topic in post.created job.posted job.applied event.created event.rsvp user.r
   gcloud pubsub topics create decp.$topic
 done
 
+# Dead-letter topic for failed deliveries
+gcloud pubsub topics create decp.deadletter
+
 # Create subscriptions (push to notification-service)
 gcloud pubsub subscriptions create decp-notification-post-sub \
   --topic=decp.post.created \
-  --push-endpoint=https://decp-notifications-<hash>-uc.a.run.app/pubsub/push
+  --push-endpoint="https://decp-notifications-<hash>-uc.a.run.app/pubsub/push?token=<PUBSUB_VERIFICATION_TOKEN>" \
+  --dead-letter-topic=decp.deadletter \
+  --max-delivery-attempts=10
 
 gcloud pubsub subscriptions create decp-analytics-post-sub \
   --topic=decp.post.created \
-  --push-endpoint=https://decp-analytics-<hash>-uc.a.run.app/pubsub/push
+  --push-endpoint="https://decp-analytics-<hash>-uc.a.run.app/pubsub/push?token=<PUBSUB_VERIFICATION_TOKEN>" \
+  --dead-letter-topic=decp.deadletter \
+  --max-delivery-attempts=10
 
 # Repeat for all topics/subscriptions (see plan 03)
 ```
@@ -155,12 +167,12 @@ docker push gcr.io/<PROJECT_ID>/decp-<service>:latest
 gcloud run deploy decp-auth \
   --image gcr.io/<PROJECT_ID>/decp-auth:latest \
   --region us-central1 \
-  --no-allow-unauthenticated \
+  --allow-unauthenticated \
   --ingress internal \
   --memory 256Mi \
   --min-instances 0 \
   --max-instances 5 \
-  --set-secrets JWT_SECRET=jwt-secret:latest,MONGODB_URI=mongodb-uri-auth:latest
+  --set-secrets JWT_SECRET=jwt-secret:latest,MONGODB_URI=mongodb-uri-auth:latest,INTERNAL_SERVICE_SECRET=internal-service-secret:latest
 
 # Deploy gateway (public)
 gcloud run deploy decp-gateway \
@@ -169,6 +181,7 @@ gcloud run deploy decp-gateway \
   --allow-unauthenticated \
   --ingress all \
   --memory 256Mi \
+  --set-secrets INTERNAL_SERVICE_SECRET=internal-service-secret:latest \
   --set-env-vars AUTH_SERVICE_URL=https://decp-auth-<hash>-uc.a.run.app,...
 ```
 
@@ -180,7 +193,7 @@ The messaging-service needs `--min-instances 1` (to keep WebSocket connections a
 gcloud run deploy decp-messaging \
   --image gcr.io/<PROJECT_ID>/decp-messaging:latest \
   --region us-central1 \
-  --no-allow-unauthenticated \
+  --allow-unauthenticated \
   --ingress internal \
   --memory 512Mi \
   --min-instances 1 \
@@ -190,6 +203,19 @@ gcloud run deploy decp-messaging \
 ```
 
 > Without `--session-affinity`, WebSocket clients may be routed to a different container instance on each request, breaking the persistent connection.
+
+### Notification/Analytics: Pub/Sub Push Deploy Flags
+
+Both services must allow public ingress for Pub/Sub push delivery and validate the shared push token in `/pubsub/push`:
+
+```bash
+gcloud run deploy decp-notifications \
+  --image gcr.io/<PROJECT_ID>/decp-notifications:latest \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --ingress all \
+  --set-secrets PUBSUB_VERIFICATION_TOKEN=pubsub-verification-token:latest,INTERNAL_SERVICE_SECRET=internal-service-secret:latest
+```
 
 ### Step 5: Configure Custom Domain
 ```bash
@@ -220,7 +246,17 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      services: ${{ steps.filter.outputs.changes }}
+      gateway: ${{ steps.filter.outputs.gateway }}
+      auth: ${{ steps.filter.outputs.auth }}
+      users: ${{ steps.filter.outputs.users }}
+      feed: ${{ steps.filter.outputs.feed }}
+      jobs: ${{ steps.filter.outputs.jobs }}
+      events: ${{ steps.filter.outputs.events }}
+      research: ${{ steps.filter.outputs.research }}
+      messaging: ${{ steps.filter.outputs.messaging }}
+      notifications: ${{ steps.filter.outputs.notifications }}
+      analytics: ${{ steps.filter.outputs.analytics }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v2
@@ -242,6 +278,39 @@ jobs:
   deploy-services:
     needs: detect-changes
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: gateway
+            dir: services/gateway
+            changed: ${{ needs.detect-changes.outputs.gateway }}
+          - name: auth
+            dir: services/auth-service
+            changed: ${{ needs.detect-changes.outputs.auth }}
+          - name: users
+            dir: services/user-service
+            changed: ${{ needs.detect-changes.outputs.users }}
+          - name: feed
+            dir: services/feed-service
+            changed: ${{ needs.detect-changes.outputs.feed }}
+          - name: jobs
+            dir: services/jobs-service
+            changed: ${{ needs.detect-changes.outputs.jobs }}
+          - name: events
+            dir: services/events-service
+            changed: ${{ needs.detect-changes.outputs.events }}
+          - name: research
+            dir: services/research-service
+            changed: ${{ needs.detect-changes.outputs.research }}
+          - name: messaging
+            dir: services/messaging-service
+            changed: ${{ needs.detect-changes.outputs.messaging }}
+          - name: notifications
+            dir: services/notification-service
+            changed: ${{ needs.detect-changes.outputs.notifications }}
+          - name: analytics
+            dir: services/analytics-service
+            changed: ${{ needs.detect-changes.outputs.analytics }}
     steps:
       - uses: actions/checkout@v4
 
@@ -255,26 +324,35 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker
 
-      - name: Build and Deploy Changed Services
+      - name: Build and Deploy Changed Service
+        if: matrix.changed == 'true'
         run: |
-          SERVICES='${{ needs.detect-changes.outputs.services }}'
-          for service in $(echo $SERVICES | jq -r '.[]'); do
-            echo "Deploying $service..."
-            SERVICE_DIR="services/${service}-service"
-            [ "$service" = "gateway" ] && SERVICE_DIR="services/gateway"
+          SERVICE="${{ matrix.name }}"
+          DIR="${{ matrix.dir }}"
 
-            docker build -t gcr.io/$PROJECT_ID/decp-$service:$GITHUB_SHA $SERVICE_DIR
-            docker push gcr.io/$PROJECT_ID/decp-$service:$GITHUB_SHA
+          docker build -t gcr.io/$PROJECT_ID/decp-$SERVICE:$GITHUB_SHA $DIR
+          docker push gcr.io/$PROJECT_ID/decp-$SERVICE:$GITHUB_SHA
 
-            gcloud run deploy decp-$service \
-              --image gcr.io/$PROJECT_ID/decp-$service:$GITHUB_SHA \
-              --region $REGION \
-              --quiet
-          done
+          INGRESS="internal"
+          EXTRA_FLAGS=""
+          if [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "notifications" ] || [ "$SERVICE" = "analytics" ]; then
+            INGRESS="all"
+          fi
+          if [ "$SERVICE" = "messaging" ]; then
+            EXTRA_FLAGS="--min-instances=1 --session-affinity"
+          fi
+
+          gcloud run deploy decp-$SERVICE \
+            --image gcr.io/$PROJECT_ID/decp-$SERVICE:$GITHUB_SHA \
+            --region $REGION \
+            --ingress $INGRESS \
+            --allow-unauthenticated \
+            $EXTRA_FLAGS \
+            --quiet
 
   deploy-web:
     needs: detect-changes
-    if: contains(needs.detect-changes.outputs.services, 'web')
+    if: needs.detect-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -410,6 +488,7 @@ async function getUploadUrl(fileName, fileType) {
 | `cf-r2-access-key`       | feed-service, research-service, user-service |
 | `cf-r2-secret-key`       | feed-service, research-service, user-service |
 | `internal-service-secret`| all services                  |
+| `pubsub-verification-token` | notification-service, analytics-service |
 | `firebase-service-account` | notification-service         |
 
 ---

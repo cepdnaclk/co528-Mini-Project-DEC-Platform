@@ -185,16 +185,19 @@ class ApiClient {
         handler.next(options);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
+        final isRefreshCall = error.requestOptions.path.contains('/api/v1/auth/refresh');
+        if (error.response?.statusCode == 401 && !isRefreshCall && error.requestOptions.extra['retried'] != true) {
           // Try to refresh token
           try {
             final refreshToken = await _storage.getRefreshToken();
-            final response = await _dio.post('/api/v1/auth/refresh',
-              data: {'refreshToken': refreshToken});
+            final refreshDio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
+            final response = await refreshDio.post('/api/v1/auth/refresh',
+              data: {'refreshToken': refreshToken, 'client': 'mobile'});
             final newToken = response.data['data']['accessToken'];
             await _storage.saveAccessToken(newToken);
             // Retry original request
             final opts = error.requestOptions;
+            opts.extra['retried'] = true;
             opts.headers['Authorization'] = 'Bearer $newToken';
             final retryResponse = await _dio.fetch(opts);
             return handler.resolve(retryResponse);

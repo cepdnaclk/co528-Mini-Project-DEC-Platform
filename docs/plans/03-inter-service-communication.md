@@ -23,16 +23,16 @@ Internal calls include a shared secret header to bypass JWT auth:
 X-Internal-Token: <INTERNAL_SERVICE_SECRET>
 ```
 Each service validates this header for routes marked as internal-only.
+For notification/analytics public ingress services, the same token is required on `/api/v1/*` routes.
 
 ### Call Map
 
 | Caller              | Callee              | Endpoint Called                          | Purpose                                                           |
 |---------------------|---------------------|------------------------------------------|-------------------------------------------------------------------|
 | analytics-service   | feed-service        | GET /api/v1/feed/posts/popular?limit=10  | Get top posts by likes for dashboard (internal endpoint)          |
-| notification-service| user-service        | GET /api/v1/users/:id                    | Get user's FCM token and display name for push notification       |
 | feed-service        | user-service        | GET /api/v1/users/:id                    | Denormalise author info on post creation                          |
 
-> **Note:** Analytics job-application counts are derived from Pub/Sub event counters (`decp.job.applied` subscription), not via a direct HTTP call to jobs-service. This avoids an unnecessary synchronous dependency between analytics and jobs services.
+> **Note:** notification-service reads recipient device tokens from its own `device_tokens` collection (source of truth), so no synchronous dependency on user-service is required for push delivery.
 
 ### HTTP Client Pattern (inside each service)
 ```js
@@ -108,6 +108,7 @@ module.exports = internalClient;
 ### `decp.post.created`
 ```json
 {
+  "eventId": "evt-8f43076e-ec55-4b67-8f6d-4df9f681fa8e",
   "eventType": "post.created",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -122,6 +123,7 @@ module.exports = internalClient;
 ### `decp.job.posted`
 ```json
 {
+  "eventId": "evt-c24f53dd-2f37-43ea-9a1f-7f6617cc2cb1",
   "eventType": "job.posted",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -137,6 +139,7 @@ module.exports = internalClient;
 ### `decp.job.applied`
 ```json
 {
+  "eventId": "evt-28cde7a6-e139-4a79-a0ca-58e903fd0128",
   "eventType": "job.applied",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -151,6 +154,7 @@ module.exports = internalClient;
 ### `decp.event.created`
 ```json
 {
+  "eventId": "evt-9be6f97e-28be-45ad-a5e2-2ec8f5723f66",
   "eventType": "event.created",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -165,6 +169,7 @@ module.exports = internalClient;
 ### `decp.event.rsvp`
 ```json
 {
+  "eventId": "evt-7c5efd2b-ea1d-4890-885d-ed538f94b2ca",
   "eventType": "event.rsvp",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -179,6 +184,7 @@ module.exports = internalClient;
 ### `decp.user.registered`
 ```json
 {
+  "eventId": "evt-134c5144-f070-45ea-a313-57d9d45395d4",
   "eventType": "user.registered",
   "timestamp": "2025-03-01T10:00:00Z",
   "data": {
@@ -216,10 +222,12 @@ module.exports = { publish };
 
 Usage in feed-service after saving a post:
 ```js
+const crypto = require('node:crypto');
 const { publish } = require('../lib/pubsub');
 
 // After post saved to DB:
 await publish(process.env.PUBSUB_TOPIC_POST_CREATED, {
+  eventId: crypto.randomUUID(),
   eventType: 'post.created',
   timestamp: new Date().toISOString(),
   data: { postId: post._id, authorId: post.authorId, authorName: post.authorName, contentPreview: post.content.slice(0, 100) }
@@ -237,18 +245,22 @@ Subscriptions use **push delivery** — GCP Pub/Sub sends HTTP POST requests to 
 const express = require('express');
 const router = express.Router();
 
-// GCP Pub/Sub push endpoint (not exposed through gateway — internal only)
+// GCP Pub/Sub push endpoint (not exposed through gateway; protected by verification token)
 router.post('/pubsub/push', express.json(), async (req, res) => {
   try {
+    if (req.query.token !== process.env.PUBSUB_VERIFICATION_TOKEN) {
+      return res.status(403).send();
+    }
+
     const message = req.body.message;
     const data = JSON.parse(Buffer.from(message.data, 'base64').toString());
 
     await handleEvent(data); // dispatch to appropriate handler
 
-    res.status(200).send(); // ACK
+    res.status(204).send(); // ACK only on success
   } catch (err) {
     console.error('Pub/Sub handler error:', err);
-    res.status(200).send(); // Still ACK to prevent infinite redelivery
+    res.status(500).send(); // NACK -> retry by Pub/Sub
   }
 });
 
@@ -265,8 +277,13 @@ async function handleEvent(data) {
 
 Configure push subscription endpoint in GCP:
 ```
-Subscription push endpoint: https://decp-notifications-<hash>-uc.a.run.app/pubsub/push
+Subscription push endpoint: https://decp-notifications-<hash>-uc.a.run.app/pubsub/push?token=<PUBSUB_VERIFICATION_TOKEN>
 ```
+
+Reliability rules:
+- Do not ACK failed events.
+- Configure dead-letter topics with max delivery attempts (for example 10).
+- Use `eventId` as an idempotency key in subscriber storage to prevent double-processing on retries.
 
 ---
 
@@ -289,6 +306,5 @@ events-service ─publishes─► decp.event.rsvp   ──► notification-servi
                                                 └──► analytics-service   (push)
 
 analytics-service ──HTTP──► feed-service       (GET /api/v1/feed/posts/popular — top posts by likes)
-notification-service ─HTTP─► user-service      (GET /api/v1/users/:id — user FCM token + name)
 feed-service ─────HTTP──► user-service         (GET /api/v1/users/:id — denormalise author info)
 ```

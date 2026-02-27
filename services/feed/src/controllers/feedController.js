@@ -1,0 +1,171 @@
+const z = require('zod');
+const Post = require('../models/Post');
+const internalClient = require('../../lib/internalClient');
+const { publish } = require('../../lib/pubsub');
+
+exports.getUploadUrl = async (req, res) => {
+  res.json({ success: true, url: 'http://localhost:9000/mock/upload', publicUrl: 'http://localhost:9000/mock/public' });
+};
+
+exports.postSchema = z.object({
+  content: z.string(),
+  mediaUrls: z.array(z.string()).optional()
+});
+
+exports.createPost = async (req, res) => {
+  try {
+    const authorId = req.headers['x-user-id'];
+    if (!authorId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    let authorName = 'Unknown User';
+    let authorAvatar = '';
+    try {
+      const response = await internalClient.get('http://localhost:3002/api/v1/users/' + authorId);
+      if (response.data && response.data.data) {
+        authorName = response.data.data.name;
+        authorAvatar = response.data.data.avatarUrl;
+      }
+    } catch(e) {
+      console.warn('Could not fetch user profile', e.message);
+    }
+
+    const post = new Post({
+      authorId,
+      authorName,
+      authorAvatar,
+      content: req.body.content,
+      mediaUrls: req.body.mediaUrls || []
+    });
+    await post.save();
+
+    await publish(process.env.PUBSUB_TOPIC_POST_CREATED || 'decp.post.created', {
+      postId: post._id,
+      authorId,
+      content: post.content
+    });
+
+    res.json({ success: true, data: post });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getPosts = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const query = {};
+    if (req.query.cursor) {
+      query._id = { $lt: req.query.cursor };
+    }
+    const posts = await Post.find(query).sort({ _id: -1 }).limit(limit);
+    res.json({ success: true, data: posts, nextCursor: posts.length ? posts[posts.length - 1]._id : null });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getPost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.likePost = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    
+    if (!post.likes.includes(userId)) {
+      post.likes.push(userId);
+      post.likeCount += 1;
+      await post.save();
+    }
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.unlikePost = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    
+    if (post.likes.includes(userId)) {
+      post.likes = post.likes.filter(id => id !== userId);
+      post.likeCount -= 1;
+      await post.save();
+    }
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.commentSchema = z.object({
+  content: z.string()
+});
+
+exports.addComment = async (req, res) => {
+  try {
+    const authorId = req.headers['x-user-id'];
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    
+    let authorName = 'Unknown User';
+    let authorAvatar = '';
+    try {
+      const resp = await internalClient.get('http://localhost:3002/api/v1/users/' + authorId);
+      if (resp.data?.data) {
+        authorName = resp.data.data.name;
+        authorAvatar = resp.data.data.avatarUrl;
+      }
+    } catch(e) {}
+
+    const comment = { authorId, authorName, authorAvatar, content: req.body.content };
+    post.comments.push(comment);
+    post.commentCount += 1;
+    await post.save();
+    
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getComments = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: post.comments });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.sharePost = async (req, res) => {
+  try {
+    const post = await Post.findByIdAndUpdate(req.params.id, { $inc: { shareCount: 1 } }, { new: true });
+    if (!post) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getPopularPosts = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const posts = await Post.find().sort({ likeCount: -1 }).limit(limit);
+    res.json({ success: true, data: posts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};

@@ -106,7 +106,8 @@ web/
 ### Token Storage
 - `accessToken`: stored in memory (Zustand store) — not in localStorage to prevent XSS
 - `refreshToken`: stored in `httpOnly` cookie via the API response (auth-service sets `Set-Cookie`)
-- On app load: call `GET /api/v1/auth/verify` to check if refresh token cookie is still valid and restore session
+- On app load: call `POST /api/v1/auth/refresh` (cookie-based) to restore session and issue a fresh access token
+- Production cookie settings: `Domain=.decp.app`, `Secure`, `HttpOnly`, `SameSite=Lax`
 
 ### Axios Interceptor
 ```ts
@@ -128,7 +129,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 && !error.config._retry) {
+    const isRefreshCall = error.config?.url?.includes('/api/v1/auth/refresh');
+    if (error.response?.status === 401 && !error.config._retry && !isRefreshCall) {
       error.config._retry = true;
       try {
         const { data } = await axios.post(
@@ -223,8 +225,8 @@ const fetcher = (url: string) => api.get(url).then(r => r.data.data);
 export function useFeed() {
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && !previousPageData.cursor) return null;
-    const cursor = pageIndex === 0 ? '' : `?cursor=${previousPageData.cursor}`;
-    return `/api/v1/feed/posts${cursor}&limit=20`;
+    if (pageIndex === 0) return '/api/v1/feed/posts?limit=20';
+    return `/api/v1/feed/posts?cursor=${previousPageData.cursor}&limit=20`;
   };
 
   const { data, size, setSize, isLoading } = useSWRInfinite(getKey, fetcher);
@@ -245,6 +247,7 @@ export function useFeed() {
 // lib/firebase.ts
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import api from './api';
 
 const app = initializeApp({
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

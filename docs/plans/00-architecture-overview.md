@@ -83,18 +83,18 @@ DECP is a cloud-deployed, service-oriented platform for the University of Perade
 
 ## 4. Services at a Glance
 
-| Service              | Cloud Run Name        | Responsibility                                      | MongoDB DB         |
-|----------------------|-----------------------|-----------------------------------------------------|--------------------|
-| API Gateway          | `decp-gateway`        | Route, auth-check, rate-limit                       | none               |
-| Auth Service         | `decp-auth`           | Register, login, JWT issue/refresh                  | `decp_auth`        |
-| User Service         | `decp-users`          | Profile CRUD, role management                       | `decp_users`       |
-| Feed Service         | `decp-feed`           | Posts, likes, comments, media upload                | `decp_feed`        |
-| Jobs Service         | `decp-jobs`           | Job/internship postings, applications               | `decp_jobs`        |
-| Events Service       | `decp-events`         | Events, announcements, RSVP                         | `decp_events`      |
-| Research Service     | `decp-research`       | Projects, documents, collaborators                  | `decp_research`    |
-| Messaging Service    | `decp-messaging`      | DM and group chat via WebSocket                     | `decp_messaging`   |
-| Notification Service | `decp-notifications`  | In-app + push notifications via FCM                 | `decp_notifications`|
-| Analytics Service    | `decp-analytics`      | Aggregate metrics for admin dashboard               | `decp_analytics`   |
+| Service              | Cloud Run Name        | Responsibility                                      | MongoDB DB          | Ingress |
+|----------------------|-----------------------|-----------------------------------------------------|---------------------|---------|
+| API Gateway          | `decp-gateway`        | Route, auth-check, rate-limit                       | none                | Public  |
+| Auth Service         | `decp-auth`           | Register, login, JWT issue/refresh                  | `decp_auth`         | Internal |
+| User Service         | `decp-users`          | Profile CRUD, role management                       | `decp_users`        | Internal |
+| Feed Service         | `decp-feed`           | Posts, likes, comments, media upload                | `decp_feed`         | Internal |
+| Jobs Service         | `decp-jobs`           | Job/internship postings, applications               | `decp_jobs`         | Internal |
+| Events Service       | `decp-events`         | Events, announcements, RSVP                         | `decp_events`       | Internal |
+| Research Service     | `decp-research`       | Projects, documents, collaborators                  | `decp_research`     | Internal |
+| Messaging Service    | `decp-messaging`      | DM and group chat via WebSocket                     | `decp_messaging`    | Internal |
+| Notification Service | `decp-notifications`  | In-app + push notifications via FCM                 | `decp_notifications`| Public (Pub/Sub push endpoint) |
+| Analytics Service    | `decp-analytics`      | Aggregate metrics for admin dashboard               | `decp_analytics`    | Public (Pub/Sub push endpoint) |
 
 ---
 
@@ -156,7 +156,7 @@ Each backend service follows this internal structure:
 
 ### Decision 1: API Gateway over Direct Service Access
 **Choice:** All clients talk to a single gateway service, not individual services directly.
-**Rationale:** Single entry point for auth validation, rate limiting, and CORS. Clients need only one base URL. Matches SOA enterprise integration patterns.
+**Rationale:** Single entry point for auth validation, rate limiting, and CORS. Clients need only one base URL. Gateway injects trusted identity headers and `X-Internal-Token` for downstream services.
 **Tradeoff:** Gateway is a single point of failure; mitigated by Cloud Run's auto-scaling and health checks.
 
 ### Decision 2: Shared MongoDB Atlas Cluster, Logical DB Separation
@@ -176,7 +176,7 @@ Each backend service follows this internal structure:
 
 ### Decision 5: JWT (Stateless Auth)
 **Choice:** Auth service issues short-lived access tokens (15 min) + long-lived refresh tokens (7 days) stored in httpOnly cookies on web and secure storage on mobile.
-**Rationale:** Stateless verification — each service can verify tokens independently without calling auth-service on every request. The gateway performs token validation before forwarding.
+**Rationale:** Stateless verification at the gateway avoids auth-service lookups per request. The gateway forwards trusted identity headers (`x-user-id`, `x-user-role`) to downstream services.
 **Tradeoff:** Access tokens cannot be individually revoked before expiry; mitigated by short expiry window.
 
 ---

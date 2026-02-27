@@ -30,18 +30,18 @@ Reasons:
 
 | Incoming Path Prefix       | Downstream Service URL              | Auth Required |
 |----------------------------|-------------------------------------|---------------|
-| `/api/v1/auth/*`           | `http://decp-auth/api/v1/auth/*`    | No (handled inside auth-service) |
-| `/api/v1/users/*`          | `http://decp-users/api/v1/users/*`  | Yes           |
-| `/api/v1/feed/*`           | `http://decp-feed/api/v1/feed/*`    | Yes (except health) |
-| `/api/v1/jobs/*`           | `http://decp-jobs/api/v1/jobs/*`    | Yes           |
-| `/api/v1/events/*`         | `http://decp-events/api/v1/events/*`| Yes           |
-| `/api/v1/research/*`       | `http://decp-research/...`          | Yes           |
-| `/api/v1/messages/*`       | `http://decp-messaging/...`         | Yes           |
-| `/api/v1/notifications/*`  | `http://decp-notifications/...`     | Yes           |
-| `/api/v1/analytics/*`      | `http://decp-analytics/...`         | Yes (Admin)   |
+| `/api/v1/auth/*`           | `https://decp-auth-<hash>-uc.a.run.app`    | No (handled inside auth-service) |
+| `/api/v1/users/*`          | `https://decp-users-<hash>-uc.a.run.app`   | Yes           |
+| `/api/v1/feed/*`           | `https://decp-feed-<hash>-uc.a.run.app`    | Yes |
+| `/api/v1/jobs/*`           | `https://decp-jobs-<hash>-uc.a.run.app`    | Yes           |
+| `/api/v1/events/*`         | `https://decp-events-<hash>-uc.a.run.app`  | Yes           |
+| `/api/v1/research/*`       | `https://decp-research-<hash>-uc.a.run.app`| Yes           |
+| `/api/v1/messages/*`       | `https://decp-messaging-<hash>-uc.a.run.app`| Yes          |
+| `/api/v1/notifications/*`  | `https://decp-notifications-<hash>-uc.a.run.app`| Yes     |
+| `/api/v1/analytics/*`      | `https://decp-analytics-<hash>-uc.a.run.app`| Yes (Admin)  |
 | `GET /health`              | — (gateway responds directly)       | No            |
 
-**Note:** Downstream URLs use Cloud Run service names resolvable via VPC / internal DNS. In production these will be Cloud Run internal URLs (e.g., `https://decp-auth-<hash>-uc.a.run.app`), configured via environment variables.
+**Important:** Proxy routes preserve the original path (`/api/v1/...`) when forwarding. Do not strip the prefix.
 
 ---
 
@@ -83,10 +83,11 @@ app.use(rateLimit);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'gateway' }));
 
 // Public auth routes — no JWT check
-app.use('/api/v1/auth', proxyRouter.auth);
+app.use(proxyRouter.auth);
 
 // All other routes require valid JWT
-app.use('/api/v1', authMiddleware, proxyRouter.protected);
+app.use('/api/v1', authMiddleware);
+app.use(proxyRouter.protected);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Gateway running on port ${PORT}`));
@@ -98,15 +99,20 @@ const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : req.query.token; // WebSocket browser fallback
+
+  if (!token) {
     return res.status(401).json({ success: false, error: 'Missing token' });
   }
-  const token = authHeader.split(' ')[1];
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     // Forward user context to downstream services
     req.headers['x-user-id'] = decoded.userId;
     req.headers['x-user-role'] = decoded.role;
+    req.headers['x-internal-token'] = process.env.INTERNAL_SERVICE_SECRET;
     next();
   } catch (err) {
     return res.status(401).json({ success: false, error: 'Invalid or expired token' });
@@ -132,7 +138,8 @@ module.exports = rateLimit({
 const cors = require('cors');
 
 const allowedOrigins = [
-  process.env.WEB_CLIENT_URL,        // https://decp.vercel.app
+  process.env.WEB_CLIENT_URL,        // https://decp.app
+  process.env.WEB_CLIENT_URL_PREVIEW,// https://decp.vercel.app
   'http://localhost:3000',           // local dev
 ];
 
@@ -170,10 +177,20 @@ const serviceUrls = {
 };
 
 // Helper
-const proxy = (target) => createProxyMiddleware({
+// IMPORTANT: Express strips the path prefix when using router.use('/prefix', fn).
+// e.g. a request to /api/v1/users/me arrives at the proxy as /me.
+// pathRewrite re-attaches the stripped prefix so the downstream service
+// receives the full /api/v1/... path it expects.
+const proxy = (target, prefix) => createProxyMiddleware({
   target,
   changeOrigin: true,
+  ws: true,
+  xfwd: true,
+  pathRewrite: (path) => prefix + path, // e.g. '/me' → '/api/v1/users/me'
   on: {
+    proxyReq: (proxyReq) => {
+      proxyReq.setHeader('X-Internal-Token', process.env.INTERNAL_SERVICE_SECRET);
+    },
     error: (err, req, res) => {
       console.error('Proxy error:', err.message);
       res.status(502).json({ success: false, error: 'Service temporarily unavailable' });
@@ -183,19 +200,19 @@ const proxy = (target) => createProxyMiddleware({
 
 // Auth proxy (public)
 const authRouter = express.Router();
-authRouter.use('/', proxy(serviceUrls.auth));
+authRouter.use('/api/v1/auth', proxy(serviceUrls.auth, '/api/v1/auth'));
 module.exports.auth = authRouter;
 
 // Protected proxies
 const protectedRouter = express.Router();
-protectedRouter.use('/users',         proxy(serviceUrls.users));
-protectedRouter.use('/feed',          proxy(serviceUrls.feed));
-protectedRouter.use('/jobs',          proxy(serviceUrls.jobs));
-protectedRouter.use('/events',        proxy(serviceUrls.events));
-protectedRouter.use('/research',      proxy(serviceUrls.research));
-protectedRouter.use('/messages',      proxy(serviceUrls.messages));
-protectedRouter.use('/notifications', proxy(serviceUrls.notifications));
-protectedRouter.use('/analytics',     proxy(serviceUrls.analytics));
+protectedRouter.use('/api/v1/users',         proxy(serviceUrls.users,         '/api/v1/users'));
+protectedRouter.use('/api/v1/feed',          proxy(serviceUrls.feed,          '/api/v1/feed'));
+protectedRouter.use('/api/v1/jobs',          proxy(serviceUrls.jobs,          '/api/v1/jobs'));
+protectedRouter.use('/api/v1/events',        proxy(serviceUrls.events,        '/api/v1/events'));
+protectedRouter.use('/api/v1/research',      proxy(serviceUrls.research,      '/api/v1/research'));
+protectedRouter.use('/api/v1/messages',      proxy(serviceUrls.messages,      '/api/v1/messages'));
+protectedRouter.use('/api/v1/notifications', proxy(serviceUrls.notifications, '/api/v1/notifications'));
+protectedRouter.use('/api/v1/analytics',     proxy(serviceUrls.analytics,     '/api/v1/analytics'));
 module.exports.protected = protectedRouter;
 ```
 
@@ -206,9 +223,11 @@ module.exports.protected = protectedRouter;
 ```env
 PORT=8080
 JWT_SECRET=<same_secret_as_auth_service>
-WEB_CLIENT_URL=https://decp.vercel.app
+INTERNAL_SERVICE_SECRET=<shared_service_secret_checked_by_downstream_services>
+WEB_CLIENT_URL=https://decp.app
+WEB_CLIENT_URL_PREVIEW=https://decp.vercel.app
 
-# Downstream service URLs (Cloud Run internal URLs)
+# Downstream service URLs (Cloud Run service URLs)
 AUTH_SERVICE_URL=https://decp-auth-<hash>-uc.a.run.app
 USER_SERVICE_URL=https://decp-users-<hash>-uc.a.run.app
 FEED_SERVICE_URL=https://decp-feed-<hash>-uc.a.run.app
@@ -224,18 +243,13 @@ ANALYTICS_SERVICE_URL=https://decp-analytics-<hash>-uc.a.run.app
 
 ## 7. WebSocket Handling
 
-Cloud Run supports WebSocket upgrades. The `http-proxy-middleware` handles WebSocket upgrade headers transparently. Ensure the `--allow-unauthenticated` flag is set on the gateway Cloud Run service (public-facing), and internal services are restricted to internal traffic only.
+Cloud Run supports WebSocket upgrades. The `http-proxy-middleware` handles upgrade headers when `ws: true` is enabled in the proxy config.
 
 For the messaging WebSocket:
 ```
 WS handshake: GET /api/v1/messages/ws?token=<access_token>
 ```
 The gateway auth middleware checks the token from the query string for WebSocket upgrades (since WebSocket doesn't send Authorization headers in the browser).
-
-```js
-// In auth.js — handle WS token from query param
-const token = authHeader?.split(' ')[1] || req.query.token;
-```
 
 ---
 

@@ -212,11 +212,12 @@ Bcrypt with 12 rounds is intentionally slow (~250ms/hash), making brute-force at
 
 | Layer                    | Mechanism                                                   |
 |--------------------------|-------------------------------------------------------------|
-| Internal services        | Cloud Run `ingress: internal` — unreachable from internet   |
+| Internal services        | Core services use Cloud Run `ingress: internal`             |
+| Public push services     | notification-service and analytics-service require `X-Internal-Token` on `/api/v1/*` routes |
 | Service-to-service calls | `X-Internal-Token` header checked before processing        |
 | Database access          | MongoDB Atlas IP allowlist (restrict to Cloud Run IP range in production) |
 | R2 uploads               | Pre-signed URLs expire in 5 minutes                         |
-| Pub/Sub push             | Push endpoint only accepts requests from GCP Pub/Sub IPs   |
+| Pub/Sub push             | Push endpoint validates `PUBSUB_VERIFICATION_TOKEN` and returns non-2xx on failure |
 
 ---
 
@@ -246,8 +247,9 @@ Only the web client domain and localhost are allowed as origins. Mobile clients 
 
 ```js
 const allowedOrigins = [
-  'https://decp.vercel.app',
   'https://decp.app',
+  'https://www.decp.app',
+  'https://decp.vercel.app',
   'http://localhost:3000',
 ];
 ```
@@ -259,7 +261,7 @@ const allowedOrigins = [
 1. **Never serve uploaded files directly from Cloud Run.** Files go to R2 via pre-signed URL.
 2. **Pre-signed URL validation:** The backend generates a URL only after checking the user is authenticated and the file type/size is acceptable.
 3. **File type whitelist:** Only allow `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `application/pdf`.
-4. **File size limits:** Enforced via R2 upload conditions in the pre-signed URL (`Content-Length-Range` condition).
+4. **File size limits:** Enforced before issuing the pre-signed URL and re-validated when metadata is saved.
 5. **No executable types:** `.exe`, `.sh`, `.js`, `.php` etc. are explicitly rejected.
 
 ```js
@@ -292,6 +294,6 @@ All secrets are stored in **GCP Secret Manager**, not in code or Docker image la
 | SQL/NoSQL injection     | Mongoose + Zod validation; parameterised queries                   |
 | Privilege escalation    | Role injected by gateway from verified JWT; RBAC per endpoint      |
 | Insecure file upload    | Pre-signed URLs; type/size whitelist; no direct upload to server   |
-| MITM                    | HTTPS enforced everywhere; HSTS on Cloud Run                        |
-| Internal service abuse  | Internal-only ingress + X-Internal-Token header                    |
+| MITM                    | HTTPS enforced everywhere; HSTS header set at gateway               |
+| Internal service abuse  | Internal ingress for core services + X-Internal-Token on app routes |
 | Secret exposure         | GCP Secret Manager; no secrets in code or images                   |
