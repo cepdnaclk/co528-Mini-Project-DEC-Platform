@@ -4,11 +4,151 @@ services:
   mongodb:
     image: mongo:6.0
     container_name: decp-mongodb
-    network_mode: bridge
     ports:
-      - "27018:27017"
+      - "27018:27017" # Exposed to host for local dev tools (Robo3T / local node scripts)
     volumes:
       - mongodb_data:/data/db
+    restart: unless-stopped
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    container_name: decp-pubsub
+    ports:
+      - "8085:8085"
+    command: gcloud beta emulators pubsub start --project=dummy-project --host-port=0.0.0.0:8085
+    restart: unless-stopped
+    
+  auth:
+    build: ./services/auth
+    container_name: decp-auth
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  user:
+    build: ./services/user
+    container_name: decp-user
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  feed:
+    build: ./services/feed
+    container_name: decp-feed
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3003
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  jobs:
+    build: ./services/jobs
+    container_name: decp-jobs
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3004
+    ports:
+      - "3004:3004"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  events:
+    build: ./services/events
+    container_name: decp-events
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3005
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  notification:
+    build: ./services/notification
+    container_name: decp-notification
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3007
+    ports:
+      - "3007:3007"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  analytics:
+    build: ./services/analytics
+    container_name: decp-analytics
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3008
+    ports:
+      - "3008:3008"
+    depends_on:
+      - mongodb
+      - pubsub
+    restart: unless-stopped
+
+  messaging:
+    build: ./services/messaging
+    container_name: decp-messaging
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3006
+    ports:
+      - "3006:3006"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  research:
+    build: ./services/research
+    container_name: decp-research
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3009
+    ports:
+      - "3009:3009"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    container_name: decp-gateway
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=8080
+    ports:
+      - "8082:8080" # Exposed to host to act as public internet frontend
+      - "8081:8081"
+    depends_on:
+      - auth
+      - user
+      - feed
+      - jobs
+      - events
+      - notification
+      - analytics
     restart: unless-stopped
 
 volumes:

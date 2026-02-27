@@ -35,38 +35,27 @@ We have successfully completed the core foundation: **Phases 0 through 4**.
 
 ---
 
-## Currently In Progress
+## Currently Complete
 
-We are in the middle of **Phase 5 (Core Backend Services)**, specifically working on the **`feed-service` (T013)**.
+**Phase 11 (Secondary Services) is now complete.** The following services are fully implemented, Dockerized, and running in the local cluster:
 
-- **Completed for Feed-Service**: Scaffolding, `package.json`, model definitions (`Post`, `Comment`), routes, and controller logic are written. The logic seamlessly requests user details synchronously from `user-service` to enrich posts, and emits Pub/Sub mock notifications.
-- **Pending**: It requires E2E curl testing to ensure there are no bugs in the routing or schema execution.
+- **Notification Service** (`services/notification`, port 3007): Receives Pub/Sub HTTP push events from the emulator on `/pubsub/push`, decodes base64 payloads, creates in-app notifications in MongoDB, and exposes `GET /api/v1/notifications` and `PUT /api/v1/notifications/:id/read`. E2E verified: liked a post → `decp.post.liked` event → notification saved → fetched by admin.
+- **Analytics Service** (`services/analytics`, port 3008): Receives all topic push events, derives event type from subscription name fallback, and increments counters in MongoDB. Exposes `GET /api/v1/analytics/metrics` (admin only). E2E verified: created post → `totalPosts` counter incremented.
+- **Research & Innovation Service** (`services/research`, port 3009): CRUD for research projects with join functionality. `POST/GET /api/v1/research`, `GET /api/v1/research/:id`, `POST /api/v1/research/:id/join`.
+- **Messaging Service** (`services/messaging`, port 3006): 1:1 chat platform. `POST /api/v1/messages/send`, `GET /api/v1/messages/inbox`, `GET /api/v1/messages/conversation/:otherUserId`.
 
 ---
 
 ## Next Steps
 
-When you resume, you should pick up right from where we left off—testing the `feed-service`, and then implementing the remaining services in Phase 5.
+The entire local backend is complete. The following would be needed to deploy to production:
 
-### 1. Test Feed Service
-- Bring up the environment (MongoDB on 27018, user-service, auth-service, feed-service).
-- Write a few posts, try liking a post, and add explicit test-cases. 
-
-### 2. Implement Jobs Service (T014)
-- Set up `services/jobs`.
-- Create the Job schema (roles restricted to alumni/admin for posting, student for applying).
-- Apply similar patterns (internalAuth, zod validations).
-
-### 3. Implement Events Service (T015)
-- Set up `services/events`.
-- Implement event creation (Admin only).
-- Implement RSVP functionality (Any user). 
-
-### 4. Proceed to Deployment Phases (6 & 7)
-- After the core services are stable locally, the next phases will involve configuring GCP Secret Manager (T016) and deploying the individual Docker containers to Cloud Run (T017–T024), utilizing the public Gateway to test everything in the cloud.
+1. **Cloud Run Deployment (Phases 6 & 7 re-enabled)**: Once real GCP credentials are available, swap `docker-compose.env` mock secrets for actual Secret Manager references and deploy each service as a Cloud Run job.
+2. **Client Development**: Begin Next.js frontend and Flutter mobile app development against the stable local API Gateway (`http://localhost:8082`).
+3. **Peer Mentorship / Social Graph**: Implement alumni↔student matching algorithms for the mentorship system.
 
 ---
 **Root Files Overview:**
 - `project-status.md` contains blockers on external keys.
-- `docker-compose.yml` holds the local DB setup.
-- The actual checklist status is actively maintained in the internal artifact task lists.
+- `docker-compose.yml` orchestrates all 13 containers including MongoDB, PubSub emulator, 9 microservices, and the API Gateway.
+- Scripts: `scripts/setup-pubsub.js` configures all emulator topics and subscriptions.
