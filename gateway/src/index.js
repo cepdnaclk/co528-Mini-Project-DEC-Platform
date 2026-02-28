@@ -1,4 +1,5 @@
 require('dotenv').config();
+const http = require('http');
 const express = require('express');
 const corsMiddleware = require('./middleware/cors');
 const rateLimitMiddleware = require('./middleware/rateLimit');
@@ -14,9 +15,13 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'gateway' }))
 
 app.use(authMiddleware);
 
-setupProxies(app);
+// Create an explicit HTTP server so we can attach the WebSocket upgrade
+// handler for the realtime service proxy
+const server = http.createServer(app);
+
+setupProxies(app, server);
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
 });

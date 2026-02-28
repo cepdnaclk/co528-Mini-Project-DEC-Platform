@@ -4,18 +4,9 @@ const createServiceProxy = (targetUrl, prefix) => {
   return createProxyMiddleware({
     target: targetUrl,
     changeOrigin: true,
-    pathRewrite: {
-      '^/api/v1/auth': '/api/v1/auth',
-      '^/api/v1/users': '/api/v1/users',
-      '^/api/v1/feed': '/api/v1/feed',
-      '^/api/v1/jobs': '/api/v1/jobs',
-      '^/api/v1/events': '/api/v1/events',
-    },
     on: {
       proxyReq: (proxyReq, req, res) => {
-        // Express drops the app.use() prefix; we force it back to ensure target gets full URL
         proxyReq.path = prefix + (req.url === '/' ? '' : req.url);
-        
         if (req.headers['x-user-id']) proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
         if (req.headers['x-user-role']) proxyReq.setHeader('x-user-role', req.headers['x-user-role']);
         if (req.headers['x-internal-token']) proxyReq.setHeader('x-internal-token', req.headers['x-internal-token']);
@@ -24,7 +15,25 @@ const createServiceProxy = (targetUrl, prefix) => {
   });
 };
 
-module.exports = (app) => {
+module.exports = (app, server) => {
+  // ── WebSocket proxy for Realtime service (socket.io) ──────────────────────
+  // Must be registered BEFORE REST routes so WS upgrade is caught first.
+  if (process.env.REALTIME_SERVICE_URL) {
+    const wsProxy = createProxyMiddleware({
+      target: process.env.REALTIME_SERVICE_URL,
+      changeOrigin: true,
+      ws: true,      // enables WebSocket upgrade proxying
+    });
+    app.use('/realtime', wsProxy);
+
+    // Attach the WebSocket upgrade handler to the underlying HTTP server
+    // so socket.io handshake upgrades are forwarded correctly
+    if (server) {
+      server.on('upgrade', wsProxy.upgrade);
+    }
+  }
+
+  // ── REST service proxies ───────────────────────────────────────────────────
   if (process.env.AUTH_SERVICE_URL) {
     app.use('/api/v1/auth', createServiceProxy(process.env.AUTH_SERVICE_URL, '/api/v1/auth'));
   }

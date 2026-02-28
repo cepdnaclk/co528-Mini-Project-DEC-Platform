@@ -1,5 +1,6 @@
 const z = require('zod');
 const Message = require('../models/Message');
+const { emitToUser } = require('../../lib/realtimeEmitter');
 
 const sendSchema = z.object({
   recipientId: z.string(),
@@ -19,6 +20,28 @@ exports.sendMessage = async (req, res) => {
     const conversationId = getConversationId(senderId, recipientId);
 
     const message = await Message.create({ senderId, recipientId, conversationId, content });
+
+    // Push the new message to the RECIPIENT's browser in real-time (if connected)
+    await emitToUser(recipientId, 'message', {
+      _id: message._id,
+      senderId: message.senderId,
+      recipientId: message.recipientId,
+      conversationId: message.conversationId,
+      content: message.content,
+      isRead: message.isRead,
+      createdAt: message.createdAt,
+    });
+
+    // Also emit back to the SENDER so multi-tab sessions stay in sync
+    await emitToUser(senderId, 'message:sent', {
+      _id: message._id,
+      senderId: message.senderId,
+      recipientId: message.recipientId,
+      conversationId: message.conversationId,
+      content: message.content,
+      createdAt: message.createdAt,
+    });
+
     res.status(201).json({ success: true, data: message });
   } catch (err) {
     if (err instanceof z.ZodError) return res.status(400).json({ success: false, error: err.errors });

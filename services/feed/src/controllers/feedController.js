@@ -1,10 +1,33 @@
 const z = require('zod');
+const { randomUUID } = require('crypto');
 const Post = require('../models/Post');
 const internalClient = require('../../lib/internalClient');
 const { publish } = require('../../lib/pubsub');
+const { getPresignedUploadUrl } = require('../../lib/r2');
+
+// Accepted MIME types → extension map
+const MIME_TO_EXT = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+};
 
 exports.getUploadUrl = async (req, res) => {
-  res.json({ success: true, url: 'http://localhost:9000/mock/upload', publicUrl: 'http://localhost:9000/mock/public' });
+  try {
+    const mimeType = req.body?.mimeType || req.query?.mimeType || 'image/jpeg';
+    const ext = MIME_TO_EXT[mimeType] || 'bin';
+    const key = `posts/${randomUUID()}.${ext}`;
+
+    const { uploadUrl, publicUrl } = await getPresignedUploadUrl(key, mimeType);
+
+    res.json({ success: true, uploadUrl, publicUrl, key });
+  } catch (err) {
+    console.error('[R2] Error generating upload URL:', err.message);
+    res.status(500).json({ success: false, error: 'Could not generate upload URL' });
+  }
 };
 
 exports.postSchema = z.object({

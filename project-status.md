@@ -21,6 +21,8 @@
 | 7 — Cloud Run Deploy | ✅ Emulated | Full containerized local cluster via `docker-compose.yml` |
 | 10 — Pub/Sub Setup | ✅ Complete | Emulator + `scripts/setup-pubsub.js` creates all topics & push subs |
 | 11 — Secondary Services | ✅ Complete | Notification, Analytics, Research, Messaging |
+| 12 — Testing Suite | ✅ Complete | Full E2E test scripts passing for all 9 services |
+| 13 — Realtime Service | ✅ Complete | WebSockets (socket.io) replaces polling for Chat & Notifications |
 
 ## Running Services (Local Docker Cluster)
 
@@ -39,6 +41,7 @@ All 13 containers are running and healthy:
 | `decp-notification` | 3007 | In-App Notifications (Pub/Sub driven) |
 | `decp-analytics` | 3008 | Platform Metrics (Pub/Sub driven) |
 | `decp-research` | 3009 | Research Projects |
+| `decp-realtime` | 3010 | WebSockets (socket.io) Push Delivery |
 | `decp-gateway` | 8082 (host) | API Gateway — single public entry point |
 
 ## E2E Test Scripts Available

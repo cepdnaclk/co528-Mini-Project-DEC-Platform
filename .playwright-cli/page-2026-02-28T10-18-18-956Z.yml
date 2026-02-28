@@ -1,0 +1,402 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e28]:
+    - complementary [ref=e29]:
+      - generic [ref=e30]:
+        - img [ref=e32]
+        - generic [ref=e34]: DECP
+      - generic [ref=e35]: Menu
+      - link "Feed" [ref=e36] [cursor=pointer]:
+        - /url: /feed
+        - img [ref=e37]
+        - text: Feed
+      - link "Jobs" [ref=e41] [cursor=pointer]:
+        - /url: /jobs
+        - img [ref=e42]
+        - text: Jobs
+      - link "Events" [ref=e45] [cursor=pointer]:
+        - /url: /events
+        - img [ref=e46]
+        - text: Events
+      - link "Messages" [ref=e48] [cursor=pointer]:
+        - /url: /messages
+        - img [ref=e49]
+        - text: Messages
+      - link "Research" [ref=e51] [cursor=pointer]:
+        - /url: /research
+        - img [ref=e52]
+        - text: Research
+      - link "Notifications" [ref=e54] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e55]
+        - text: Notifications
+      - link "Profile" [ref=e58] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e59]
+        - text: Profile
+      - generic [ref=e64]:
+        - generic [ref=e65]: S
+        - generic [ref=e67]: User
+        - button "Logout" [ref=e69] [cursor=pointer]:
+          - img [ref=e70]
+    - generic [ref=e73]:
+      - banner [ref=e74]:
+        - heading "Feed" [level=1] [ref=e75]
+        - generic [ref=e76]:
+          - link [ref=e77] [cursor=pointer]:
+            - /url: /notifications
+            - img [ref=e78]
+          - link "U" [ref=e81] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e82]: U
+      - main [ref=e83]:
+        - generic [ref=e84]:
+          - textbox "What's on your mind?" [ref=e85]
+          - generic [ref=e86]:
+            - button "Photo" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+              - text: Photo
+            - button "Post" [disabled] [ref=e92] [cursor=pointer]:
+              - img [ref=e93]
+              - text: Post
+        - generic [ref=e536]:
+          - generic [ref=e537]:
+            - generic [ref=e538]: U
+            - generic [ref=e539]:
+              - generic [ref=e540]: Unknown User
+              - generic [ref=e541]: less than a minute ago
+          - paragraph [ref=e542]: Testing the feed from Playwright!
+          - generic [ref=e544]:
+            - button "0" [ref=e545] [cursor=pointer]:
+              - img [ref=e546]
+              - text: "0"
+            - button "0" [ref=e548] [cursor=pointer]:
+              - img [ref=e549]
+              - text: "0"
+            - button "Share" [ref=e551] [cursor=pointer]:
+              - img [ref=e552]
+              - text: Share
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]: U
+            - generic [ref=e99]:
+              - generic [ref=e100]: Unknown User
+              - generic [ref=e101]: about 5 hours ago
+          - paragraph [ref=e102]: Notification Test Post
+          - generic [ref=e104]:
+            - button "1" [ref=e105] [cursor=pointer]:
+              - img [ref=e106]
+              - text: "1"
+            - button "0" [ref=e108] [cursor=pointer]:
+              - img [ref=e109]
+              - text: "0"
+            - button "Share" [ref=e111] [cursor=pointer]:
+              - img [ref=e112]
+              - text: Share
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - generic [ref=e120]: U
+            - generic [ref=e121]:
+              - generic [ref=e122]: Unknown User
+              - generic [ref=e123]: about 6 hours ago
+          - paragraph [ref=e124]: Analytics counter test post
+          - generic [ref=e126]:
+            - button "0" [ref=e127] [cursor=pointer]:
+              - img [ref=e128]
+              - text: "0"
+            - button "0" [ref=e130] [cursor=pointer]:
+              - img [ref=e131]
+              - text: "0"
+            - button "Share" [ref=e133] [cursor=pointer]:
+              - img [ref=e134]
+              - text: Share
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: U
+            - generic [ref=e143]:
+              - generic [ref=e144]: Unknown User
+              - generic [ref=e145]: about 6 hours ago
+          - paragraph [ref=e146]: Hello world from bash script!
+          - generic [ref=e148]:
+            - button "1" [ref=e149] [cursor=pointer]:
+              - img [ref=e150]
+              - text: "1"
+            - button "1" [ref=e152] [cursor=pointer]:
+              - img [ref=e153]
+              - text: "1"
+            - button "Share" [ref=e155] [cursor=pointer]:
+              - img [ref=e156]
+              - text: Share
+        - generic [ref=e162]:
+          - generic [ref=e163]:
+            - generic [ref=e164]: U
+            - generic [ref=e165]:
+              - generic [ref=e166]: Unknown User
+              - generic [ref=e167]: about 17 hours ago
+          - paragraph [ref=e168]: Notification Test Post
+          - generic [ref=e170]:
+            - button "1" [ref=e171] [cursor=pointer]:
+              - img [ref=e172]
+              - text: "1"
+            - button "0" [ref=e174] [cursor=pointer]:
+              - img [ref=e175]
+              - text: "0"
+            - button "Share" [ref=e177] [cursor=pointer]:
+              - img [ref=e178]
+              - text: Share
+        - generic [ref=e184]:
+          - generic [ref=e185]:
+            - generic [ref=e186]: U
+            - generic [ref=e187]:
+              - generic [ref=e188]: Unknown User
+              - generic [ref=e189]: about 17 hours ago
+          - paragraph [ref=e190]: Analytics counter test post
+          - generic [ref=e192]:
+            - button "0" [ref=e193] [cursor=pointer]:
+              - img [ref=e194]
+              - text: "0"
+            - button "0" [ref=e196] [cursor=pointer]:
+              - img [ref=e197]
+              - text: "0"
+            - button "Share" [ref=e199] [cursor=pointer]:
+              - img [ref=e200]
+              - text: Share
+        - generic [ref=e206]:
+          - generic [ref=e207]:
+            - generic [ref=e208]: U
+            - generic [ref=e209]:
+              - generic [ref=e210]: Unknown User
+              - generic [ref=e211]: about 17 hours ago
+          - paragraph [ref=e212]: Hello world from bash script!
+          - generic [ref=e214]:
+            - button "1" [ref=e215] [cursor=pointer]:
+              - img [ref=e216]
+              - text: "1"
+            - button "1" [ref=e218] [cursor=pointer]:
+              - img [ref=e219]
+              - text: "1"
+            - button "Share" [ref=e221] [cursor=pointer]:
+              - img [ref=e222]
+              - text: Share
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - generic [ref=e230]: U
+            - generic [ref=e231]:
+              - generic [ref=e232]: Unknown User
+              - generic [ref=e233]: about 19 hours ago
+          - paragraph [ref=e234]: Notification Test Post
+          - generic [ref=e236]:
+            - button "1" [ref=e237] [cursor=pointer]:
+              - img [ref=e238]
+              - text: "1"
+            - button "0" [ref=e240] [cursor=pointer]:
+              - img [ref=e241]
+              - text: "0"
+            - button "Share" [ref=e243] [cursor=pointer]:
+              - img [ref=e244]
+              - text: Share
+        - generic [ref=e250]:
+          - generic [ref=e251]:
+            - generic [ref=e252]: U
+            - generic [ref=e253]:
+              - generic [ref=e254]: Unknown User
+              - generic [ref=e255]: about 19 hours ago
+          - paragraph [ref=e256]: Analytics counter test post
+          - generic [ref=e258]:
+            - button "0" [ref=e259] [cursor=pointer]:
+              - img [ref=e260]
+              - text: "0"
+            - button "0" [ref=e262] [cursor=pointer]:
+              - img [ref=e263]
+              - text: "0"
+            - button "Share" [ref=e265] [cursor=pointer]:
+              - img [ref=e266]
+              - text: Share
+        - generic [ref=e272]:
+          - generic [ref=e273]:
+            - generic [ref=e274]: U
+            - generic [ref=e275]:
+              - generic [ref=e276]: Unknown User
+              - generic [ref=e277]: about 19 hours ago
+          - paragraph [ref=e278]: Hello world from bash script!
+          - generic [ref=e280]:
+            - button "1" [ref=e281] [cursor=pointer]:
+              - img [ref=e282]
+              - text: "1"
+            - button "1" [ref=e284] [cursor=pointer]:
+              - img [ref=e285]
+              - text: "1"
+            - button "Share" [ref=e287] [cursor=pointer]:
+              - img [ref=e288]
+              - text: Share
+        - generic [ref=e294]:
+          - generic [ref=e295]:
+            - generic [ref=e296]: U
+            - generic [ref=e297]:
+              - generic [ref=e298]: Unknown User
+              - generic [ref=e299]: about 19 hours ago
+          - paragraph [ref=e300]: Notification Test Post
+          - generic [ref=e302]:
+            - button "1" [ref=e303] [cursor=pointer]:
+              - img [ref=e304]
+              - text: "1"
+            - button "0" [ref=e306] [cursor=pointer]:
+              - img [ref=e307]
+              - text: "0"
+            - button "Share" [ref=e309] [cursor=pointer]:
+              - img [ref=e310]
+              - text: Share
+        - generic [ref=e316]:
+          - generic [ref=e317]:
+            - generic [ref=e318]: U
+            - generic [ref=e319]:
+              - generic [ref=e320]: Unknown User
+              - generic [ref=e321]: about 19 hours ago
+          - paragraph [ref=e322]: Analytics counter test post
+          - generic [ref=e324]:
+            - button "0" [ref=e325] [cursor=pointer]:
+              - img [ref=e326]
+              - text: "0"
+            - button "0" [ref=e328] [cursor=pointer]:
+              - img [ref=e329]
+              - text: "0"
+            - button "Share" [ref=e331] [cursor=pointer]:
+              - img [ref=e332]
+              - text: Share
+        - generic [ref=e338]:
+          - generic [ref=e339]:
+            - generic [ref=e340]: U
+            - generic [ref=e341]:
+              - generic [ref=e342]: Unknown User
+              - generic [ref=e343]: about 19 hours ago
+          - paragraph [ref=e344]: Hello world from bash script!
+          - generic [ref=e346]:
+            - button "1" [ref=e347] [cursor=pointer]:
+              - img [ref=e348]
+              - text: "1"
+            - button "1" [ref=e350] [cursor=pointer]:
+              - img [ref=e351]
+              - text: "1"
+            - button "Share" [ref=e353] [cursor=pointer]:
+              - img [ref=e354]
+              - text: Share
+        - generic [ref=e360]:
+          - generic [ref=e361]:
+            - generic [ref=e362]: U
+            - generic [ref=e363]:
+              - generic [ref=e364]: Unknown User
+              - generic [ref=e365]: about 19 hours ago
+          - paragraph [ref=e366]: Notification Test Post
+          - generic [ref=e368]:
+            - button "1" [ref=e369] [cursor=pointer]:
+              - img [ref=e370]
+              - text: "1"
+            - button "0" [ref=e372] [cursor=pointer]:
+              - img [ref=e373]
+              - text: "0"
+            - button "Share" [ref=e375] [cursor=pointer]:
+              - img [ref=e376]
+              - text: Share
+        - generic [ref=e382]:
+          - generic [ref=e383]:
+            - generic [ref=e384]: U
+            - generic [ref=e385]:
+              - generic [ref=e386]: Unknown User
+              - generic [ref=e387]: about 19 hours ago
+          - paragraph [ref=e388]: Analytics counter test post
+          - generic [ref=e390]:
+            - button "0" [ref=e391] [cursor=pointer]:
+              - img [ref=e392]
+              - text: "0"
+            - button "0" [ref=e394] [cursor=pointer]:
+              - img [ref=e395]
+              - text: "0"
+            - button "Share" [ref=e397] [cursor=pointer]:
+              - img [ref=e398]
+              - text: Share
+        - generic [ref=e404]:
+          - generic [ref=e405]:
+            - generic [ref=e406]: U
+            - generic [ref=e407]:
+              - generic [ref=e408]: Unknown User
+              - generic [ref=e409]: about 19 hours ago
+          - paragraph [ref=e410]: Hello world from bash script!
+          - generic [ref=e412]:
+            - button "1" [ref=e413] [cursor=pointer]:
+              - img [ref=e414]
+              - text: "1"
+            - button "1" [ref=e416] [cursor=pointer]:
+              - img [ref=e417]
+              - text: "1"
+            - button "Share" [ref=e419] [cursor=pointer]:
+              - img [ref=e420]
+              - text: Share
+        - generic [ref=e426]:
+          - generic [ref=e427]:
+            - generic [ref=e428]: U
+            - generic [ref=e429]:
+              - generic [ref=e430]: Unknown User
+              - generic [ref=e431]: about 20 hours ago
+          - paragraph [ref=e432]: Analytics metrics test
+          - generic [ref=e434]:
+            - button "0" [ref=e435] [cursor=pointer]:
+              - img [ref=e436]
+              - text: "0"
+            - button "0" [ref=e438] [cursor=pointer]:
+              - img [ref=e439]
+              - text: "0"
+            - button "Share" [ref=e441] [cursor=pointer]:
+              - img [ref=e442]
+              - text: Share
+        - generic [ref=e448]:
+          - generic [ref=e449]:
+            - generic [ref=e450]: U
+            - generic [ref=e451]:
+              - generic [ref=e452]: Unknown User
+              - generic [ref=e453]: about 20 hours ago
+          - paragraph [ref=e454]: Analytics test post
+          - generic [ref=e456]:
+            - button "0" [ref=e457] [cursor=pointer]:
+              - img [ref=e458]
+              - text: "0"
+            - button "0" [ref=e460] [cursor=pointer]:
+              - img [ref=e461]
+              - text: "0"
+            - button "Share" [ref=e463] [cursor=pointer]:
+              - img [ref=e464]
+              - text: Share
+        - generic [ref=e470]:
+          - generic [ref=e471]:
+            - generic [ref=e472]: U
+            - generic [ref=e473]:
+              - generic [ref=e474]: Unknown User
+              - generic [ref=e475]: about 20 hours ago
+          - paragraph [ref=e476]: Notification Test Post
+          - generic [ref=e478]:
+            - button "1" [ref=e479] [cursor=pointer]:
+              - img [ref=e480]
+              - text: "1"
+            - button "0" [ref=e482] [cursor=pointer]:
+              - img [ref=e483]
+              - text: "0"
+            - button "Share" [ref=e485] [cursor=pointer]:
+              - img [ref=e486]
+              - text: Share
+        - generic [ref=e492]:
+          - generic [ref=e493]:
+            - generic [ref=e494]: U
+            - generic [ref=e495]:
+              - generic [ref=e496]: Unknown User
+              - generic [ref=e497]: about 20 hours ago
+          - paragraph [ref=e498]: Notification Test Post
+          - generic [ref=e500]:
+            - button "1" [ref=e501] [cursor=pointer]:
+              - img [ref=e502]
+              - text: "1"
+            - button "0" [ref=e504] [cursor=pointer]:
+              - img [ref=e505]
+              - text: "0"
+            - button "Share" [ref=e507] [cursor=pointer]:
+              - img [ref=e508]
+              - text: Share
+  - status [ref=e563]: Post created!
+  - alert [ref=e27]

@@ -132,6 +132,16 @@ services:
       - mongodb
     restart: unless-stopped
 
+  realtime:
+    build: ./services/realtime
+    container_name: decp-realtime
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3010
+    ports:
+      - "3010:3010"
+    restart: unless-stopped
+
   gateway:
     build: ./gateway
     container_name: decp-gateway

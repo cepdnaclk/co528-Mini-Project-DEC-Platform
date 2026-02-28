@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-  if (req.path.startsWith('/api/v1/auth')) {
+  // Auth service doesn't need a token (it IS the login endpoint)
+  // Realtime service performs its own JWT check on the socket.io handshake
+  if (req.path.startsWith('/api/v1/auth') || req.path.startsWith('/realtime')) {
     return next();
   }
 
