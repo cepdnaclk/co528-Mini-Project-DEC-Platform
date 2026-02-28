@@ -1,0 +1,409 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ═══════════════════════════════════════════
+   DECP — Neumorphic / Soft UI Design System
+   ═══════════════════════════════════════════ */
+
+:root {
+  /* Background */
+  --bg: #e8ecf0;
+  --bg-dark: #dde1e7;
+  --surface: #e8ecf0;
+
+  /* Neumorphic shadows */
+  --neu-shadow: 8px 8px 16px #c8cfd8, -8px -8px 16px #ffffff;
+  --neu-shadow-sm: 4px 4px 8px #c8cfd8, -4px -4px 8px #ffffff;
+  --neu-shadow-lg: 12px 12px 24px #c0c8d2, -12px -12px 24px #ffffff;
+  --neu-inset: inset 4px 4px 8px #c8cfd8, inset -4px -4px 8px #ffffff;
+  --neu-pressed: inset 6px 6px 12px #c0c8d2, inset -2px -2px 6px #ffffff;
+
+  /* Brand gradient */
+  --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  --gradient-text: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+  /* Text */
+  --text-primary: #1e2a3a;
+  --text-secondary: #5a6a7e;
+  --text-muted: #8a9ab2;
+
+  /* Brand colours */
+  --primary: #6366f1;
+  --primary-light: #8b5cf6;
+  --primary-dark: #4f46e5;
+  --accent: #a78bfa;
+
+  /* Semantic */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Spacing */
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ─── Reset ──────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+img { max-width: 100%; display: block; }
+
+/* ─── Neumorphic Utilities ───────────────── */
+.neu-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--neu-shadow);
+  padding: 1.5rem;
+}
+.neu-card-sm {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--neu-shadow-sm);
+  padding: 1rem;
+}
+.neu-card-lg {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--neu-shadow-lg);
+  padding: 2rem;
+}
+.neu-inset {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--neu-inset);
+}
+
+/* ─── Gradient text ──────────────────────── */
+.gradient-text {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Buttons ────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-neu {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--neu-shadow-sm);
+}
+.btn-neu:hover { box-shadow: var(--neu-shadow); }
+.btn-neu:active { box-shadow: var(--neu-pressed); }
+
+.btn-ghost {
+  color: var(--primary);
+  background: transparent;
+  border: 2px solid transparent;
+}
+.btn-ghost:hover { background: rgba(99, 102, 241, 0.08); border-color: rgba(99,102,241,0.2); }
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+/* ─── Inputs ──────────────────────────────── */
+.neu-input {
+  width: 100%;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--neu-inset);
+  padding: 0.85rem 1.2rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.neu-input::placeholder { color: var(--text-muted); }
+.neu-input:focus {
+  box-shadow: var(--neu-pressed), 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+/* ─── Badges / Pills ────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.badge-success { background: rgba(16,185,129,0.12); color: var(--success); }
+.badge-warning { background: rgba(245,158,11,0.12); color: var(--warning); }
+.badge-danger  { background: rgba(239,68,68,0.12);  color: var(--danger); }
+.badge-muted   { background: rgba(90,106,126,0.12); color: var(--text-secondary); }
+
+/* ─── Tag chip ───────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--surface);
+  box-shadow: var(--neu-shadow-sm);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.chip:hover, .chip.active {
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+/* ─── Avatar ──────────────────────────────── */
+.avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: var(--neu-shadow-sm);
+}
+.avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: #fff;
+  background: var(--gradient);
+  flex-shrink: 0;
+}
+
+/* ─── Divider ────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #c8cfd8, transparent);
+  margin: 1rem 0;
+}
+
+/* ─── Section heading ────────────────────── */
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Page layout grid ────────────────────── */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.5rem;
+  gap: 0.5rem;
+  background: var(--bg);
+  box-shadow: var(--neu-shadow);
+}
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.top-bar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(200,207,216,0.5);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.page-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ─── Grid UI Layouts ────────────────────── */
+.grid-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.grid-cols-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.feed-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .feed-layout {
+    grid-template-columns: 1fr;
+  }
+  .feed-sidebar {
+    display: none;
+  }
+}
+
+/* ─── Sidebar nav item ────────────────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.nav-item:hover {
+  background: var(--surface);
+  box-shadow: var(--neu-shadow-sm);
+  color: var(--text-primary);
+}
+.nav-item.active {
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(99,102,241,0.35);
+}
+.nav-item.active svg { opacity: 1; }
+
+/* ─── Card hover lift ────────────────────── */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neu-shadow-lg);
+}
+
+/* ─── Loading skeleton ───────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #dde1e7 25%, #e8ecf0 50%, #dde1e7 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Feed post card ─────────────────────── */
+.post-actions button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.post-actions button:hover { background: rgba(99,102,241,0.1); color: var(--primary); }
+.post-actions button.liked { color: #ef4444; }
+
+/* ─── Chat bubble ────────────────────────── */
+.chat-bubble {
+  padding: 0.7rem 1rem;
+  border-radius: 16px;
+  max-width: 70%;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.chat-bubble.mine {
+  background: var(--gradient);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}
+.chat-bubble.theirs {
+  background: var(--surface);
+  box-shadow: var(--neu-shadow-sm);
+  border-bottom-left-radius: 4px;
+}
+
+/* ─── Notification dot ───────────────────── */
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ─── Scrollbar styling ──────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #c8cfd8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a0aab8; }
+
+/* ─── Responsive ─────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .page-content { padding: 1rem; }
+}

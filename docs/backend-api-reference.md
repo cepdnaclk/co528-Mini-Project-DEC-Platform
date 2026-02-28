@@ -150,6 +150,7 @@ All endpoints return JSON. The envelope structure is consistent across all servi
 | Notification | `decp-notification` | 3007 | 3007 | `decp_notifications` |
 | Analytics | `decp-analytics` | 3008 | 3008 | `decp_analytics` |
 | Research | `decp-research` | 3009 | 3009 | `decp_research` |
+| Realtime (WS) | `decp-realtime` | 3010 | 3010 | — |
 
 ---
 
@@ -1043,38 +1044,80 @@ export default api;
 7. On logout → POST /auth/logout → clear all local state
 ```
 
-### Notification Polling Pattern
+### Real-Time WebSocket Integration (Notifications & Chat)
 
-Since WebSockets are not yet implemented, use polling for the unread notification badge:
+The platform supports true push real-time delivery via `socket.io` through the API Gateway. Once authenticated, the frontend should establish a WebSocket connection to receive events instantly, eliminating the need for REST polling.
+
+```bash
+npm install socket.io-client
+```
 
 ```typescript
-// hooks/useNotifications.ts
-export function useNotifications() {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+// hooks/useRealtime.ts
+import { useEffect, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
+
+export function useRealtime(accessToken: string | null) {
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      const { data } = await api.get('/api/v1/notifications?limit=20');
-      setNotifications(data.data);
-      setUnreadCount(data.data.filter(n => !n.isRead).length);
+    if (!accessToken) return;
+
+    // Connect to gateway — it automatically proxies /realtime/socket.io to the decp-realtime service
+    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082', {
+      path: '/realtime/socket.io',
+      auth: { token: accessToken },
+      reconnectionAttempts: 5
+    });
+
+    newSocket.on('connect', () => console.log('WebSocket connected'));
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
     };
+  }, [accessToken]);
 
-    fetchNotifications(); // initial load
-    const interval = setInterval(fetchNotifications, 30000); // poll every 30s
-    return () => clearInterval(interval);
-  }, []);
-
-  const markAsRead = async (id: string) => {
-    await api.put(`/api/v1/notifications/${id}/read`);
-    setNotifications(prev =>
-      prev.map(n => n._id === id ? { ...n, isRead: true } : n)
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  return { notifications, unreadCount, markAsRead };
+  return socket;
 }
+```
+
+**Using the connection for Chat:**
+```typescript
+const socket = useRealtime(token);
+
+useEffect(() => {
+  if (!socket) return;
+  
+  // Listen for incoming messages
+  socket.on('message', (message) => {
+    if (message.conversationId === activeConversationId) {
+      setMessages(prev => [...prev, message]);
+    }
+    // Update inbox preview...
+  });
+
+  // Listen for sync of messages YOU sent (useful for multi-tab sync)
+  socket.on('message:sent', (message) => {
+    setMessages(prev => [...prev, message]);
+  });
+}, [socket]);
+```
+
+**Using the connection for Notifications:**
+```typescript
+const socket = useRealtime(token);
+
+useEffect(() => {
+  if (!socket) return;
+  
+  socket.on('notification', (newNotif) => {
+    setNotifications(prev => [newNotif, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    toast(`New notification: ${newNotif.content}`);
+  });
+}, [socket]);
 ```
 
 ### Feed Pagination Pattern

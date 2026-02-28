@@ -1,5 +1,7 @@
 const Notification = require('../models/Notification');
 const z = require('zod');
+const { emitToUser } = require('../../lib/realtimeEmitter');
+
 
 // Schema for fetching notifications
 const fetchQuerySchema = z.object({
@@ -128,7 +130,19 @@ exports.handlePubSubPush = async (req, res) => {
     }
 
     if (notificationsToCreate.length > 0) {
-      await Notification.insertMany(notificationsToCreate);
+      const saved = await Notification.insertMany(notificationsToCreate);
+
+      // Push each notification to the recipient's browser in real-time
+      for (const notif of saved) {
+        await emitToUser(notif.recipientId, 'notification', {
+          _id: notif._id,
+          type: notif.type,
+          content: notif.content,
+          link: notif.link,
+          isRead: notif.isRead,
+          createdAt: notif.createdAt,
+        });
+      }
     }
 
     // Acknowledge the message by returning 200/204
