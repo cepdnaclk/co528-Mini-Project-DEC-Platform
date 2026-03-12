@@ -205,9 +205,17 @@ async function sectionJobs(page) {
     await wait(page, 1000);
     log('Application submitted ✓');
 
-    // Capture the application for cleanup (we'll store the job ID so we can see it was applied)
-    // No need to cleanup applications — they stay on record, which is fine for demo idempotency
+    // Close modal if still open
+    const overlay = page.locator('.modal-overlay');
+    if (await overlay.isVisible().catch(() => false)) {
+      await page.keyboard.press('Escape');
+      await wait(page, 400);
+    }
   } catch (e) { log(`Apply skipped: ${e.message}`); }
+
+  // Ensure any open modal is dismissed before navigating away
+  await page.keyboard.press('Escape');
+  await wait(page, 400);
 
   await wait(page, 500);
 }
