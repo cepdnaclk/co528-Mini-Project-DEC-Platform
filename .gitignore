@@ -15,6 +15,7 @@ web/.playwright-cli/
 
 # Local test artifacts
 *.png
+!docs/screenshots/*.png
 local-assets/
 messages-conversation.png
 messages-inbox.png
