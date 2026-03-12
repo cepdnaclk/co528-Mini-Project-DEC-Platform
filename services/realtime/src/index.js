@@ -47,6 +47,18 @@ function emitToUser(userId, event, payload) {
   return true;
 }
 
+function getOnlineUserIds(excludeUserId) {
+  return Array.from(userSockets.keys()).filter((id) => id !== excludeUserId);
+}
+
+function broadcastPresence() {
+  io.emit('presence:sync', { userIds: getOnlineUserIds() });
+}
+
+function isUserOnline(userId) {
+  return userSockets.has(userId);
+}
+
 // --------------------------------------------------------------------------
 // Socket.io connection handler
 // --------------------------------------------------------------------------
@@ -69,19 +81,54 @@ io.on('connection', (socket) => {
   const { userId } = socket;
   console.log(`[REALTIME] User ${userId} connected (socket: ${socket.id})`);
   registerUser(userId, socket.id);
+  const isFirstSocketForUser = userSockets.get(userId)?.size === 1;
 
   // Join a per-user room so we can easily target this user
   socket.join(`user:${userId}`);
 
+  // Send the newly connected client a full snapshot so late joiners can render presence correctly.
+  socket.emit('presence:init', { userIds: getOnlineUserIds(userId) });
+
+  // Also broadcast an authoritative full presence snapshot so every client converges on the same state.
+  broadcastPresence();
+
+  // Broadcast online presence only for the user's first active socket.
+  if (isFirstSocketForUser) {
+    socket.broadcast.emit('user:online', { userId });
+  }
+
+  // --- Typing indicators (client → server → recipient) ---
+  // Client emits: { recipientId, conversationId }
+  socket.on('typing:start', ({ recipientId, conversationId }) => {
+    if (!recipientId) return;
+    emitToUser(recipientId, 'typing:start', { senderId: userId, conversationId });
+  });
+
+  socket.on('typing:stop', ({ recipientId, conversationId }) => {
+    if (!recipientId) return;
+    emitToUser(recipientId, 'typing:stop', { senderId: userId, conversationId });
+  });
+
+  socket.on('presence:query', ({ targetUserId }, reply) => {
+    if (typeof reply === 'function') {
+      reply({ userId: targetUserId, online: !!targetUserId && isUserOnline(targetUserId) });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`[REALTIME] User ${userId} disconnected (socket: ${socket.id})`);
     unregisterUser(userId, socket.id);
+    broadcastPresence();
+    // Broadcast offline only when the user has no remaining sockets
+    if (!userSockets.has(userId)) {
+      socket.broadcast.emit('user:offline', { userId });
+    }
   });
 });
 
 // --------------------------------------------------------------------------
 // Internal HTTP endpoint: other services POST here to emit events to users
-// Called by: Notification service, Messaging service
+// Called by: Notification service, Messaging service, Feed service
 // --------------------------------------------------------------------------
 app.post('/emit', (req, res) => {
   const internalToken = req.headers['x-internal-token'];
@@ -90,12 +137,32 @@ app.post('/emit', (req, res) => {
   }
 
   const { userId, event, payload } = req.body;
+
+  // Broadcast mode: no userId → emit to ALL connected clients (e.g. feed:new_post)
+  if (!userId && event && payload) {
+    io.emit(event, payload);
+    console.log(`[REALTIME] Broadcast '${event}' to all ${userSockets.size} connected user(s)`);
+    return res.json({ success: true, broadcast: true, connectedUsers: userSockets.size });
+  }
+
   if (!userId || !event || !payload) {
     return res.status(400).json({ success: false, error: 'Missing userId, event, or payload' });
   }
 
   const delivered = emitToUser(userId, event, payload);
   res.json({ success: true, delivered, connectedSockets: userSockets.get(userId)?.size ?? 0 });
+});
+
+app.get('/presence/:userId', (req, res) => {
+  const { userId } = req.params;
+  res.json({
+    success: true,
+    data: {
+      userId,
+      online: !!userId && isUserOnline(userId),
+      connectedSockets: userSockets.get(userId)?.size ?? 0,
+    },
+  });
 });
 
 // Health check

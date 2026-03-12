@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { connectSocket } from '@/lib/socket';
+import { Sparkles, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -19,11 +20,14 @@ export default function LoginPage() {
         setLoading(true);
         try {
             const { data } = await api.post('/api/v1/auth/login', form);
-            setAuth(data.data.accessToken, {
+            // Decode role from JWT payload as authoritative source
+            const jwtPayload = JSON.parse(atob(data.data.accessToken.split('.')[1]));
+            setAuth(data.data.accessToken, data.data.refreshToken, {
                 userId: data.data.userId,
-                role: data.data.role,
-                email: form.email,
+                role: data.data.role ?? jwtPayload.role,
+                email: data.data.email ?? form.email,
             });
+            connectSocket(data.data.accessToken);
             toast.success('Welcome back!');
             router.push('/feed');
         } catch (err: any) {
@@ -39,17 +43,22 @@ export default function LoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
         }}>
             <div className="neu-card-lg" style={{ width: '100%', maxWidth: 420 }}>
-                {/* Logo */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem' }}>
-                    <div style={{
-                        width: 40, height: 40, borderRadius: 12,
-                        background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <Sparkles size={20} color="#fff" />
-                    </div>
-                    <span style={{ fontWeight: 800, fontSize: '1.2rem' }}>
-                        DE<span className="gradient-text">CP</span>
-                    </span>
+                {/* Logo + back to home */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                    <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div style={{
+                            width: 40, height: 40, borderRadius: 12,
+                            background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Sparkles size={20} color="#fff" />
+                        </div>
+                        <span style={{ fontWeight: 800, fontSize: '1.2rem' }}>
+                            DE<span className="gradient-text">CP</span>
+                        </span>
+                    </Link>
+                    <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        <ArrowLeft size={14} /> Home
+                    </Link>
                 </div>
 
                 <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.4rem' }}>Welcome back</h1>

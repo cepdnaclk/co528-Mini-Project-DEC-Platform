@@ -30,7 +30,7 @@ const createJob = asyncHandler(async (req, res) => {
   // Fetch poster details
   let posterName = 'Unknown User';
   try {
-    const userResp = await internalClient.get(`http://localhost:3002/api/v1/users/${posterId}`);
+    const userResp = await internalClient.get(`${process.env.USER_SERVICE_URL || 'http://user:3002'}/api/v1/users/${posterId}`);
     if (userResp.data && userResp.data.data) {
       posterName = userResp.data.data.name;
     }
@@ -53,10 +53,14 @@ const createJob = asyncHandler(async (req, res) => {
 });
 
 const getJobs = asyncHandler(async (req, res) => {
-  const { type, active } = req.query;
+  const { type, active, search } = req.query;
   const filter = {};
   if (type) filter.type = type;
   if (active !== undefined) filter.active = active === 'true';
+  if (search) {
+    const regex = new RegExp(search, 'i');
+    filter.$or = [{ title: regex }, { company: regex }, { description: regex }, { location: regex }];
+  }
 
   const jobs = await Job.find(filter).sort({ createdAt: -1 }).select('-applications');
   res.json({ success: true, data: jobs });
@@ -125,7 +129,7 @@ const applyJob = asyncHandler(async (req, res) => {
   // Fetch student details
   let studentName = 'Unknown Student';
   try {
-    const userResp = await internalClient.get(`http://localhost:3002/api/v1/users/${studentId}`);
+    const userResp = await internalClient.get(`${process.env.USER_SERVICE_URL || 'http://user:3002'}/api/v1/users/${studentId}`);
     if (userResp.data && userResp.data.data) {
       studentName = userResp.data.data.name;
     }
@@ -163,6 +167,30 @@ const getApplications = asyncHandler(async (req, res) => {
   res.json({ success: true, data: job.applications });
 });
 
+const updateApplicationStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const VALID = ['pending', 'accepted', 'rejected'];
+  if (!VALID.includes(status)) {
+    return res.status(400).json({ success: false, error: `status must be one of: ${VALID.join(', ')}` });
+  }
+
+  const job = await Job.findById(req.params.id);
+  if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
+
+  const role = req.headers['x-user-role'];
+  const userId = req.headers['x-user-id'];
+  if (role !== 'admin' && job.posterId !== userId) {
+    return res.status(403).json({ success: false, error: 'Not authorized' });
+  }
+
+  const app = job.applications.id(req.params.appId);
+  if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
+
+  app.status = status;
+  await job.save();
+  res.json({ success: true, data: app });
+});
+
 module.exports = {
   createJob,
   getJobs,
@@ -171,6 +199,7 @@ module.exports = {
   deleteJob,
   applyJob,
   getApplications,
+  updateApplicationStatus,
   jobSchema,
   applySchema
 };

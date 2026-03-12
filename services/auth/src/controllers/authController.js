@@ -58,7 +58,7 @@ exports.register = async (req, res) => {
 
     res.json({
       success: true,
-      data: { userId: user._id, accessToken, refreshToken }
+      data: { userId: user._id, role: user.role, email: user.email, accessToken, refreshToken }
     });
   } catch (err) {
     console.error(err);
@@ -92,8 +92,8 @@ exports.login = async (req, res) => {
         maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    const bodyData = { userId: user._id, accessToken, refreshToken };
-    
+    const bodyData = { userId: user._id, role: user.role, email: user.email, accessToken, refreshToken };
+
     res.json({ success: true, data: bodyData });
   } catch (err) {
     console.error(err);

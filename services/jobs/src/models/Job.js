@@ -4,7 +4,8 @@ const applicationSchema = new mongoose.Schema({
   studentId: { type: String, required: true },
   studentName: { type: String, required: true },
   coverLetter: { type: String, required: true },
-  cvUrl: { type: String, required: true }
+  cvUrl: { type: String, required: true },
+  status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' }
 }, { timestamps: true });
 
 const jobSchema = new mongoose.Schema({

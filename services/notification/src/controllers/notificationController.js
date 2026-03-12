@@ -46,6 +46,30 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const count = await Notification.countDocuments({ recipientId: userId, isRead: false });
+    res.json({ success: true, count });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+};
+
+exports.markAllRead = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const result = await Notification.updateMany({ recipientId: userId, isRead: false }, { isRead: true });
+    res.json({ success: true, updated: result.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+};
+
 exports.markAsRead = async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
