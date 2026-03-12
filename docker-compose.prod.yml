@@ -1,0 +1,144 @@
+version: '3.8'
+
+# ─── Production Docker Compose ────────────────────────────────────────────────
+# Differences from docker-compose.yml (dev):
+#   - MongoDB removed → uses MongoDB Atlas (external, set MONGODB_URI secret)
+#   - Individual service ports NOT exposed to host (internal Docker network only)
+#   - Only gateway:8082 and realtime:3010 are publicly reachable
+#   - Pub/Sub emulator kept (identical behaviour to real GCP Pub/Sub for push)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Pub/Sub Emulator (push-based, runs fully inside Docker network) ──────────
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    container_name: decp-pubsub
+    command: gcloud beta emulators pubsub start --project=decp-project --host-port=0.0.0.0:8085
+    restart: unless-stopped
+
+  # ── Auth Service ─────────────────────────────────────────────────────────────
+  auth:
+    build: ./services/auth
+    container_name: decp-auth
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3001
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── User Service ─────────────────────────────────────────────────────────────
+  user:
+    build: ./services/user
+    container_name: decp-user
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3002
+    restart: unless-stopped
+
+  # ── Feed Service ─────────────────────────────────────────────────────────────
+  feed:
+    build: ./services/feed
+    container_name: decp-feed
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3003
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── Jobs Service ─────────────────────────────────────────────────────────────
+  jobs:
+    build: ./services/jobs
+    container_name: decp-jobs
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3004
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── Events Service ───────────────────────────────────────────────────────────
+  events:
+    build: ./services/events
+    container_name: decp-events
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3005
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── Messaging Service ────────────────────────────────────────────────────────
+  messaging:
+    build: ./services/messaging
+    container_name: decp-messaging
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3006
+    restart: unless-stopped
+
+  # ── Notification Service ─────────────────────────────────────────────────────
+  notification:
+    build: ./services/notification
+    container_name: decp-notification
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3007
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── Analytics Service ────────────────────────────────────────────────────────
+  analytics:
+    build: ./services/analytics
+    container_name: decp-analytics
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3008
+    depends_on:
+      - pubsub
+    restart: unless-stopped
+
+  # ── Research Service ─────────────────────────────────────────────────────────
+  research:
+    build: ./services/research
+    container_name: decp-research
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3009
+    restart: unless-stopped
+
+  # ── Realtime Service (WebSocket / Socket.IO) ─────────────────────────────────
+  realtime:
+    build: ./services/realtime
+    container_name: decp-realtime
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=3010
+    ports:
+      - "3010:3010"   # Public: WebSocket connections from web + mobile clients
+    restart: unless-stopped
+
+  # ── API Gateway (single public entry point) ──────────────────────────────────
+  gateway:
+    build: ./gateway
+    container_name: decp-gateway
+    env_file: ./docker-compose.env
+    environment:
+      - PORT=8080
+    ports:
+      - "8082:8080"   # Public: all REST API traffic goes through here
+    depends_on:
+      - auth
+      - user
+      - feed
+      - jobs
+      - events
+      - notification
+      - analytics
+      - messaging
+      - research
+      - realtime
+    restart: unless-stopped
