@@ -72,9 +72,11 @@ jobs:
             cd "$APP_DIR"
 
             # ── Step 3: Write production environment file ────────────────────
+            # MongoDB runs in Docker on this same EC2 — no Atlas needed.
+            # Only secrets (JWT, R2 keys) differ from local dev.
             echo "[3/7] Writing docker-compose.env..."
             cat > docker-compose.env << 'EOF'
-            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            MONGODB_URI=mongodb://mongodb:27017
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             INTERNAL_SERVICE_SECRET=${{ secrets.INTERNAL_SERVICE_SECRET }}
             GOOGLE_CLOUD_PROJECT_ID=decp-project
@@ -103,27 +105,26 @@ jobs:
             PUBSUB_TOPIC_EVENT_CREATED=decp.event.created
             PUBSUB_TOPIC_EVENT_RSVP=decp.event.rsvp
             EOF
-            # Remove leading whitespace from heredoc
+            # Remove leading whitespace added by heredoc indentation
             sed -i 's/^[[:space:]]*//' docker-compose.env
             echo "[3/7] Environment file written."
 
             # ── Step 4: Pull latest Docker base images ───────────────────────
             echo "[4/7] Pulling base images..."
-            sudo docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
+            sudo docker compose pull --ignore-pull-failures 2>/dev/null || true
 
             # ── Step 5: Build and start all services ─────────────────────────
             echo "[5/7] Building and starting services..."
-            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            sudo docker compose up -d --build --remove-orphans
             echo "[5/7] Services started."
 
             # ── Step 6: Run Pub/Sub setup (creates topics + push subscriptions)
-            echo "[6/7] Waiting for Pub/Sub emulator to be ready..."
-            sleep 15
+            echo "[6/7] Waiting for Pub/Sub emulator and MongoDB to be ready..."
+            sleep 20
             cd "$APP_DIR/scripts"
             if [ ! -d node_modules ]; then
               npm install --silent 2>/dev/null || true
             fi
-            # Run setup pointing to the emulator exposed on localhost
             PUBSUB_EMULATOR_HOST=localhost:8085 \
             GOOGLE_CLOUD_PROJECT_ID=decp-project \
             node setup-pubsub.js 2>/dev/null || echo "[6/7] Pub/Sub setup skipped (already configured)."
@@ -150,4 +151,4 @@ jobs:
             echo " API Gateway : http://${{ secrets.EC2_HOST }}:8082"
             echo " Realtime    : http://${{ secrets.EC2_HOST }}:3010"
             echo "========================================"
-            sudo docker compose -f docker-compose.prod.yml ps
+            sudo docker compose ps
