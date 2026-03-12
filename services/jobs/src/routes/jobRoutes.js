@@ -12,5 +12,6 @@ router.delete('/:id', jobController.deleteJob);
 
 router.post('/:id/apply', validate(jobController.applySchema), jobController.applyJob);
 router.get('/:id/applications', jobController.getApplications);
+router.put('/:id/applications/:appId', jobController.updateApplicationStatus);
 
 module.exports = router;

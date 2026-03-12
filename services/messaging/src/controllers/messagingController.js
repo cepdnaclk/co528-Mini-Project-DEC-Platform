@@ -73,17 +73,78 @@ exports.getInbox = async (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
-    // Return a list of the latest message from each unique conversation
-    const messages = await Message.aggregate([
+    // Latest message per conversation + unread count for this user
+    const conversations = await Message.aggregate([
       { $match: { $or: [{ senderId: userId }, { recipientId: userId }] } },
       { $sort: { createdAt: -1 } },
-      { $group: { _id: '$conversationId', latestMessage: { $first: '$$ROOT' } } },
-      { $replaceRoot: { newRoot: '$latestMessage' } },
-      { $sort: { createdAt: -1 } },
-      { $limit: 50 }
+      {
+        $group: {
+          _id: '$conversationId',
+          latestMessage: { $first: '$$ROOT' },
+          unreadCount: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ['$recipientId', userId] }, { $eq: ['$isRead', false] }] }, 1, 0]
+            }
+          }
+        }
+      },
+      { $sort: { 'latestMessage.createdAt': -1 } },
+      { $limit: 50 },
+      { $replaceRoot: { newRoot: { $mergeObjects: ['$latestMessage', { unreadCount: '$unreadCount' }] } } }
     ]);
 
-    res.json({ success: true, data: messages });
+    res.json({ success: true, data: conversations });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const count = await Message.countDocuments({ recipientId: userId, isRead: false });
+    res.json({ success: true, count });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.markMessageRead = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const message = await Message.findOneAndUpdate(
+      { _id: req.params.id, recipientId: userId },
+      { isRead: true },
+      { new: true }
+    );
+    if (!message) return res.status(404).json({ success: false, error: 'Message not found' });
+
+    // Notify sender that their message was read
+    await emitToUser(message.senderId, 'message:read', {
+      messageId: message._id,
+      conversationId: message.conversationId,
+      readBy: userId,
+    });
+
+    res.json({ success: true, data: message });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+exports.deleteMessage = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const message = await Message.findOne({ _id: req.params.id });
+    if (!message) return res.status(404).json({ success: false, error: 'Message not found' });
+    if (message.senderId !== userId) return res.status(403).json({ success: false, error: 'Forbidden' });
+
+    await message.deleteOne();
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Server error' });
   }

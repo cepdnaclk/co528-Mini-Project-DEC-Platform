@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "DECP",
+    "slug": "decp-mobile",
+    "version": "1.0.0",
+    "scheme": "decp",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#e4ebe6"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.decp.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#e4ebe6"
+      },
+      "package": "com.decp.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-image-picker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://192.168.8.105:8082",
+      "realtimeUrl": "http://192.168.8.105:3010",
+      "eas": {
+        "projectId": "decp-mobile"
+      }
+    }
+  }
+}

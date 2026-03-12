@@ -1,14 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { BarChart3, FileText, Briefcase, Calendar, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Metrics {
     totalPosts: number;
     totalLikes: number;
-    totalJobs: number;
+    totalJobsPosted: number;
     totalEvents: number;
     totalUsers: number;
 }
@@ -31,8 +33,14 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 }
 
 export default function AdminPage() {
+    const router = useRouter();
+    const user = useAuthStore((s) => s.user);
     const [metrics, setMetrics] = useState<Metrics | null>(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (user && user.role !== 'admin') router.replace('/feed');
+    }, [user, router]);
 
     useEffect(() => {
         api.get('/api/v1/analytics/metrics').then(({ data }) => {
@@ -43,7 +51,7 @@ export default function AdminPage() {
     const stats = [
         { key: 'totalPosts', label: 'Total Posts', icon: FileText, color: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
         { key: 'totalLikes', label: 'Total Likes', icon: BarChart3, color: 'linear-gradient(135deg, #ec4899, #f43f5e)' },
-        { key: 'totalJobs', label: 'Jobs Posted', icon: Briefcase, color: 'linear-gradient(135deg, #10b981, #059669)' },
+        { key: 'totalJobsPosted', label: 'Jobs Posted', icon: Briefcase, color: 'linear-gradient(135deg, #10b981, #059669)' },
         { key: 'totalEvents', label: 'Events', icon: Calendar, color: 'linear-gradient(135deg, #f59e0b, #d97706)' },
         { key: 'totalUsers', label: 'Registered Users', icon: Users, color: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
     ];

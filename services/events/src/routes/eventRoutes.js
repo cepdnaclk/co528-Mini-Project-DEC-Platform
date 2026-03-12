@@ -12,5 +12,6 @@ router.delete('/:id', eventController.deleteEvent);
 
 router.post('/:id/rsvp', eventController.rsvpEvent);
 router.delete('/:id/rsvp', eventController.cancelRsvpEvent);
+router.get('/:id/attendees', eventController.getAttendees);
 
 module.exports = router;

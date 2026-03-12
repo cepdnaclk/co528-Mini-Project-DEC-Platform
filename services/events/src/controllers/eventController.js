@@ -22,7 +22,7 @@ const createEvent = asyncHandler(async (req, res) => {
   // Fetch creator details
   let creatorName = 'Admin User';
   try {
-    const userResp = await internalClient.get(`http://localhost:3002/api/v1/users/${creatorId}`);
+    const userResp = await internalClient.get(`${process.env.USER_SERVICE_URL || 'http://user:3002'}/api/v1/users/${creatorId}`);
     if (userResp.data && userResp.data.data) {
       creatorName = userResp.data.data.name;
     }
@@ -113,6 +113,12 @@ const cancelRsvpEvent = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'RSVP cancelled' });
 });
 
+const getAttendees = asyncHandler(async (req, res) => {
+  const event = await Event.findById(req.params.id).select('participantIds rsvpCount');
+  if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+  res.json({ success: true, data: { participantIds: event.participantIds, rsvpCount: event.rsvpCount } });
+});
+
 module.exports = {
   createEvent,
   getEvents,
@@ -121,5 +127,6 @@ module.exports = {
   deleteEvent,
   rsvpEvent,
   cancelRsvpEvent,
+  getAttendees,
   eventSchema
 };

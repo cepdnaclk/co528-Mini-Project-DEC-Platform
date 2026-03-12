@@ -6,7 +6,9 @@ const userProfileSchema = new mongoose.Schema({
   bio: { type: String, default: '' },
   avatarUrl: { type: String, default: '' },
   skills: [{ type: String }],
-  role: { type: String, enum: ['student', 'alumni', 'admin'], default: 'student' }
+  role: { type: String, enum: ['student', 'alumni', 'admin'], default: 'student' },
+  following: [{ type: String }],
+  followers: [{ type: String }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userProfileSchema);

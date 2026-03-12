@@ -4,25 +4,91 @@
 - **MongoDB**: Using a local Docker container (`docker-compose.yml`) instead of MongoDB Atlas. Will replace `MONGODB_URI` when Atlas credentials are ready.
 - **GCP Project / Services**: GCP Cloud Run, Secret Manager, and real Pub/Sub are currently bypassed using Docker Compose local emulation. Ready to re-enable when GCP credentials are available.
 - **GCP Pub/Sub**: Replaced by the official `gcr.io/google.com/cloudsdktool/cloud-sdk:emulators` Docker image running locally on port 8085. Push subscriptions point to internal container hostnames.
-- **Cloudflare R2**: Blocked. Media upload endpoints return a mock URL for now.
+- **Cloudflare R2**: ✅ **LIVE** — real Cloudflare R2 bucket `decp-media` is fully integrated. Presigned PUT URLs used for direct browser-to-R2 uploads.
 - **Firebase / FCM**: Blocked. Push notifications are logged locally but not sent externally.
 
-## Current Progress — All Backend Phases Complete ✅
+---
+
+## Phase Progress
+
+### Backend — All Phases Complete ✅
 
 | Phase | Status | Notes |
 |---|---|---|
 | 0 — Setup | ✅ Complete | Monorepo structure, Docker Compose, MongoDB container |
 | 1 — Shared Patterns | ✅ Complete | `internalClient.js`, `pubsub.js`, standard Dockerfile |
-| 2 — Auth Service | ✅ Complete | Register, login, JWT, refresh token |
-| 3 — User Service | ✅ Complete | Profile get/update, admin role management |
-| 4 — API Gateway | ✅ Complete | JWT validation, proxy to all services, port 8082 |
-| 5 — Core Services | ✅ Complete | Feed, Jobs, Events — all with E2E test scripts |
+| 2 — Auth Service | ✅ Complete | Register, login, JWT access + refresh tokens, logout |
+| 3 — User Service | ✅ Complete | Profile CRUD, avatar upload (R2), search, follow/unfollow, followers/following |
+| 4 — API Gateway | ✅ Complete | JWT validation, CORS (ports 3000/3100/4000), proxy to all services |
+| 5 — Core Services | ✅ Complete | Feed (edit/delete/media), Jobs (search/apply/status), Events (RSVP/cancel) |
 | 6 — Secret Manager | ✅ Emulated | `docker-compose.env` simulates secrets |
 | 7 — Cloud Run Deploy | ✅ Emulated | Full containerized local cluster via `docker-compose.yml` |
 | 10 — Pub/Sub Setup | ✅ Complete | Emulator + `scripts/setup-pubsub.js` creates all topics & push subs |
 | 11 — Secondary Services | ✅ Complete | Notification, Analytics, Research, Messaging |
-| 12 — Testing Suite | ✅ Complete | Full E2E test scripts passing for all 9 services |
-| 13 — Realtime Service | ✅ Complete | WebSockets (socket.io) replaces polling for Chat & Notifications |
+| 12 — Testing Suite | ✅ Complete | Full E2E test scripts passing for all services |
+| 13 — Realtime Service | ✅ Complete | WebSockets (socket.io) for chat, typing indicators, presence, feed broadcast |
+| 14 — Backend Enhancements | ✅ Complete | All gap endpoints implemented (see table below) |
+
+### Backend Gap Endpoints Added (Phase 14)
+
+| Service | Endpoint | Description |
+|---|---|---|
+| Messaging | `GET /unread-count` | Total unread message count |
+| Messaging | `PUT /:id/read` | Mark message read + emit `message:read` |
+| Messaging | `DELETE /:id` | Delete message (sender only) |
+| Messaging | Inbox `unreadCount` | Per-conversation unread count via aggregation |
+| User | `GET /search?q=` | Search users by name/bio |
+| User | `POST /me/avatar` | R2 presigned URL for avatar upload |
+| User | `PUT /me/avatar` | Confirm avatar URL to profile |
+| User | `POST /:id/follow` | Follow a user |
+| User | `DELETE /:id/follow` | Unfollow a user |
+| User | `GET /:id/followers` | Get follower list |
+| User | `GET /:id/following` | Get following list |
+| Feed | `PUT /posts/:id` | Edit own post |
+| Feed | `DELETE /posts/:id` | Delete own post + R2 cleanup |
+| Feed | `GET /posts?authorId=` | Filter posts by author |
+| Feed | `POST /media/upload-url` | Multi-file R2 presigned URLs (`count` param) |
+| Jobs | `GET /?search=` | Text search on title/company/description |
+| Jobs | `PUT /:id/applications/:appId` | Accept / reject application |
+| Events | `GET /:id/attendees` | Get RSVP'd participant list |
+| Events | `DELETE /:id/rsvp` | Cancel RSVP |
+| Research | `PUT /:id` | Update project (title/description/status) |
+| Research | `DELETE /:id/leave` | Leave a project |
+| Notifications | `GET /unread-count` | Unread notification count |
+| Notifications | `PUT /read-all` | Mark all notifications read |
+| Realtime | Typing relay | `typing:start/stop` forwarded to recipient |
+| Realtime | Presence | `user:online/offline` broadcast on connect/disconnect |
+| Realtime | Broadcast mode | `/emit` without `userId` → `io.emit()` to all clients |
+
+### Frontend — All Phases Complete ✅
+
+| Phase | Status | Scope |
+|---|---|---|
+| 1 — Auth Infrastructure | ✅ Complete | Refresh token store, refresh interceptor, socket lifecycle, admin guard |
+| 2 — Jobs Page | ✅ Complete | Apply modal (CV URL), Post Job, Manage Applications, type filter chips |
+| 3 — Messages Page | ✅ Complete | Typing indicators, read receipts, presence dots, user search, message delete, inbox upsert |
+| 4 — Feed Page | ✅ Complete | Comments, media upload (R2), edit/delete posts, cursor pagination, new-post pill |
+| 5 — Remaining Pages | ✅ Complete | Notifications, Events, Research, Profile (avatar), other-user profile, nav badges |
+
+### Frontend Features Implemented
+
+| Page / Component | Features |
+|---|---|
+| `authStore.ts` | `refreshToken` field, updated `setAuth`, socket disconnect on logout |
+| `api.ts` | Token refresh interceptor with request queue |
+| `socket.ts` | `connectSocket`, `isUserOnline`, `onPresenceChange`, online user Set |
+| `AppShell.tsx` | Live unread badges on Messages & Notifications nav items, socket reconnect |
+| `admin/page.tsx` | Role guard — non-admin redirected to `/feed` |
+| `jobs/page.tsx` | Apply modal, Post Job modal (alumni/admin), Manage Applications, type filters |
+| `messages/page.tsx` | Typing indicators, double-tick read receipts, online presence, user search modal, message delete, auto-resize textarea |
+| `feed/page.tsx` | Inline comments, R2 media upload with previews, edit/delete own posts, load more, new-post pill |
+| `notifications/page.tsx` | Mark all read, click-to-navigate via `notification.link`, cursor pagination |
+| `events/page.tsx` | RSVP / Cancel RSVP toggle, Create Event (admin), Event Detail modal |
+| `research/page.tsx` | Create Project, join/leave, Project Detail modal, status update (creator) |
+| `profile/page.tsx` | R2 avatar upload (optimistic preview), follower/following counts + expandable panel |
+| `profile/[id]/page.tsx` | **NEW** — Other-user profile: follow/unfollow, their posts, message button |
+
+---
 
 ## Running Services (Local Docker Cluster)
 
@@ -34,28 +100,30 @@ All 13 containers are running and healthy:
 | `decp-pubsub` | 8085 | GCP Pub/Sub Emulator |
 | `decp-auth` | 3001 | Authentication |
 | `decp-user` | 3002 | User Profiles |
-| `decp-feed` | 3003 | Social Feed (Posts, Likes, Comments) |
-| `decp-jobs` | 3004 | Job Board |
+| `decp-feed` | 3003 | Social Feed (Posts, Likes, Comments, R2 Media) |
+| `decp-jobs` | 3004 | Job Board + Applications |
 | `decp-events` | 3005 | Events & RSVPs |
-| `decp-messaging` | 3006 | 1:1 Messaging |
+| `decp-messaging` | 3006 | 1:1 Messaging + Read Receipts |
 | `decp-notification` | 3007 | In-App Notifications (Pub/Sub driven) |
 | `decp-analytics` | 3008 | Platform Metrics (Pub/Sub driven) |
 | `decp-research` | 3009 | Research Projects |
-| `decp-realtime` | 3010 | WebSockets (socket.io) Push Delivery |
+| `decp-realtime` | 3010 | WebSockets (socket.io) — chat, presence, feed |
 | `decp-gateway` | 8082 (host) | API Gateway — single public entry point |
 
-## E2E Test Scripts Available
+**Frontend dev server:** `http://localhost:4000` (Next.js 14)
 
-| Script | Tests |
-|---|---|
-| `test-feed.sh` | Create post, like, comment, fetch feed |
-| `test-jobs.sh` | Post job, search, apply |
-| `test-events.sh` | Create event, RSVP, fetch |
-| `test-notifications.sh` | Like → Pub/Sub → Notification delivery |
+---
+
+## Reference Documents
+- `docs/API_CONTRACT.md` — Full backend API reference (all endpoints, request/response shapes, socket events)
+- `docs/FRONTEND_IMPLEMENTATION_PLAN.md` — Original frontend implementation plan (all phases)
+
+---
 
 ## What's Remaining (Production Deployment)
 
 1. **GCP Credentials**: Provide a service account JSON to unlock Secret Manager and real Cloud Run deployments.
 2. **MongoDB Atlas URI**: Replace local `mongodb://mongodb:27017` with Atlas connection string.
-3. **Client Development**: Next.js web app and Flutter mobile app against the stable API.
-4. **Mentorship Matching**: Alumni ↔ Student pairing algorithm in the User/Research services.
+3. **Flutter Mobile App**: Mobile client against the stable API.
+4. **Mentorship Matching**: Alumni ↔ Student pairing algorithm.
+5. **File size enforcement**: Client-side MIME/size validation before R2 upload.
