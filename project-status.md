@@ -19,7 +19,7 @@
 | 1 — Shared Patterns | ✅ Complete | `internalClient.js`, `pubsub.js`, standard Dockerfile |
 | 2 — Auth Service | ✅ Complete | Register, login, JWT access + refresh tokens, logout |
 | 3 — User Service | ✅ Complete | Profile CRUD, avatar upload (R2), search, follow/unfollow, followers/following |
-| 4 — API Gateway | ✅ Complete | JWT validation, CORS (ports 3000/3100/4000), proxy to all services |
+| 4 — API Gateway | ✅ Complete | JWT validation, CORS (port 3100), proxy to all services |
 | 5 — Core Services | ✅ Complete | Feed (edit/delete/media), Jobs (search/apply/status), Events (RSVP/cancel) |
 | 6 — Secret Manager | ✅ Emulated | `docker-compose.env` simulates secrets |
 | 7 — Cloud Run Deploy | ✅ Emulated | Full containerized local cluster via `docker-compose.yml` |
@@ -110,20 +110,52 @@ All 13 containers are running and healthy:
 | `decp-realtime` | 3010 | WebSockets (socket.io) — chat, presence, feed |
 | `decp-gateway` | 8082 (host) | API Gateway — single public entry point |
 
-**Frontend dev server:** `http://localhost:4000` (Next.js 14)
+**Frontend dev server:** `http://localhost:3100` (Next.js 14)
 
 ---
 
 ## Reference Documents
 - `docs/API_CONTRACT.md` — Full backend API reference (all endpoints, request/response shapes, socket events)
 - `docs/FRONTEND_IMPLEMENTATION_PLAN.md` — Original frontend implementation plan (all phases)
+- `docs/CLOUD_DEPLOYMENT.md` — EC2 + GitHub Actions CI/CD deployment guide (self-hosted MongoDB in Docker)
+- `docs/report/DECP_Architecture_Report.docx` — CO528 architecture report with diagrams
+- `scripts/demo.js` — Playwright demo script (all platform sections, idempotent cleanup)
+- `run-demo.sh` — One-command demo runner
+
+---
+
+### Mobile (React Native / Expo) — Complete ✅
+
+| Feature | Status | Notes |
+|---|---|---|
+| Auth (login/register) | ✅ Complete | JWT stored in SecureStore, refresh token support |
+| Feed | ✅ Complete | Post listing, likes, comments |
+| Jobs | ✅ Complete | Browse listings, apply |
+| Events | ✅ Complete | RSVP toggle |
+| Research | ✅ Complete | Browse + join projects |
+| Notifications | ✅ Complete | In-app alerts with unread badge |
+| Profile | ✅ Complete | Avatar, follower/following counts |
+| Messages — Inbox | ✅ Complete | Conversation list with unread badges, real-time updates via socket |
+| Messages — Compose | ✅ Complete | **NEW** — "+" compose button → user search modal → start new conversation |
+| Messages — Thread | ✅ Complete | Real-time chat, typing indicators, read receipts |
+
+### Demo Script — Complete ✅
+
+| Item | Detail |
+|---|---|
+| Script | `scripts/demo.js` (Node.js Playwright) |
+| Runner | `./run-demo.sh` (auto-installs Playwright + Chromium if needed) |
+| Duration | ~40 seconds (headed browser, slowed for visibility) |
+| Account | Omar Hassan (`omar.hassan@decp.io` / `Pass1234`) |
+| Sections | Login → Feed (post + like) → Jobs (apply) → Events (RSVP) → Research (join) → Messages (3 msgs to Liam Foster) → Notifications → Profile |
+| Cleanup | Fully idempotent — all created data deleted via API in `finally` block |
+| Mobile | Log in as Liam Foster (`liam.foster@decp.io` / `Pass1234`) to see messages arrive in real-time |
 
 ---
 
 ## What's Remaining (Production Deployment)
 
 1. **GCP Credentials**: Provide a service account JSON to unlock Secret Manager and real Cloud Run deployments.
-2. **MongoDB Atlas URI**: Replace local `mongodb://mongodb:27017` with Atlas connection string.
-3. **Flutter Mobile App**: Mobile client against the stable API.
-4. **Mentorship Matching**: Alumni ↔ Student pairing algorithm.
-5. **File size enforcement**: Client-side MIME/size validation before R2 upload.
+2. **MongoDB**: Currently self-hosted in Docker on EC2. Replace with Atlas URI for managed production DB.
+3. **Mentorship Matching**: Alumni ↔ Student pairing algorithm.
+4. **File size enforcement**: Client-side MIME/size validation before R2 upload.
