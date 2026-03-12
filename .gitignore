@@ -4,3 +4,25 @@ node_modules/
 *.log
 build/
 .dart_tool/
+
+# Next.js build output
+web/.next/
+web/tsconfig.tsbuildinfo
+
+# Playwright CLI sessions
+.playwright-cli/
+web/.playwright-cli/
+
+# Local test artifacts
+*.png
+local-assets/
+messages-conversation.png
+messages-inbox.png
+web/feed-desktop.png
+web/feed-mobile.png
+
+# Docker compose env (contains secrets)
+docker-compose.env
+
+# Scripts (seed data — not needed in prod)
+scripts/populate*.js

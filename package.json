@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "mobile:start": "npm --prefix mobile run start --",
+    "mobile:android": "npm --prefix mobile run android",
+    "mobile:ios": "npm --prefix mobile run ios"
+  },
   "dependencies": {
     "@google-cloud/pubsub": "^5.3.0",
     "axios": "^1.13.6",
