@@ -5,3 +5,4 @@ Demo content line for commit 4
 Demo content line for commit 5
 Demo content line for commit 6
 Demo content line for commit 7
+Demo content line for commit 8
